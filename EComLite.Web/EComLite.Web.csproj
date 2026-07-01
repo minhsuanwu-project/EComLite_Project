@@ -29,4 +29,8 @@
     <Folder Include="Services\" />
   </ItemGroup>
 
+<ItemGroup>
+  <InternalsVisibleTo Include="EComLite.Tests" />
+</ItemGroup>
+
 </Project>

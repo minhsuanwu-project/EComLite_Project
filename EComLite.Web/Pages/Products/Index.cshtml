@@ -4,20 +4,352 @@
     ViewData["Title"] = "Products";
 }
 
-<h1>Products</h1>
-
-<div class="row">
-    @foreach (var p in Model.Products)
-    {
-        <div class="col-md-4 mb-3">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">@p.Name</h5>
-                    <p class="card-text">@p.Description</p>
-                    <p class="card-text fw-bold">@p.Price.ToString("C")</p>
-                    <a asp-page="Details" asp-route-id="@p.ProductId" class="btn btn-primary">View</a>
-                </div>
-            </div>
-        </div>
+<style>
+    .products-root {
+        font-family: 'Inter', sans-serif;
+        background: #fafafa;
+        min-height: calc(100vh - 60px);
     }
+
+    /* ── Page header ── */
+    .page-header {
+        background: #ffffff;
+        border-bottom: 1px solid #f0f0f5;
+        padding: 40px 0 32px;
+    }
+
+    .page-header-inner {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 0 28px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .page-header-left .page-label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #6366f1;
+        margin-bottom: 6px;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .page-header-left h1 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        color: #0f0f1a;
+        margin: 0;
+        line-height: 1.15;
+    }
+
+    .product-count-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #eef2ff;
+        color: #4f46e5;
+        font-size: 12px;
+        font-weight: 500;
+        padding: 5px 12px;
+        border-radius: 99px;
+        border: 1px solid #c7d2fe;
+        font-family: 'Inter', sans-serif;
+        white-space: nowrap;
+    }
+
+    /* ── Grid ── */
+    .products-body {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 36px 28px 64px;
+    }
+
+    .products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 22px;
+    }
+
+    /* ── Product card ── */
+    .product-card {
+        background: #ffffff;
+        border: 1px solid #e9eaee;
+        border-radius: 16px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        opacity: 0;
+        transform: translateY(16px);
+        animation: cardIn 0.4s ease forwards;
+    }
+
+        .product-card:nth-child(1) {
+            animation-delay: 0.05s;
+        }
+
+        .product-card:nth-child(2) {
+            animation-delay: 0.12s;
+        }
+
+        .product-card:nth-child(3) {
+            animation-delay: 0.19s;
+        }
+
+        .product-card:nth-child(4) {
+            animation-delay: 0.26s;
+        }
+
+        .product-card:nth-child(5) {
+            animation-delay: 0.33s;
+        }
+
+        .product-card:nth-child(6) {
+            animation-delay: 0.40s;
+        }
+
+    @@keyframes cardIn {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .product-card:hover {
+        transform: translateY(-4px);
+        border-color: #c7d2fe;
+        box-shadow: 0 10px 28px rgba(99, 102, 241, 0.11);
+    }
+
+    /* colour bar on top of card */
+    .card-top-bar {
+        height: 4px;
+        background: linear-gradient(90deg, #6366f1, #8b5cf6);
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .product-card:hover .card-top-bar {
+        opacity: 1;
+    }
+
+    /* image placeholder area */
+    .card-img-area {
+        background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+        height: 140px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+        .card-img-area svg {
+            opacity: 0.35;
+        }
+
+    /* card body */
+    .card-body-custom {
+        padding: 20px 22px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+
+    .card-sku {
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #a0aec0;
+        margin-bottom: 6px;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .card-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 17px;
+        font-weight: 600;
+        color: #0f0f1a;
+        letter-spacing: -0.01em;
+        margin-bottom: 6px;
+        line-height: 1.3;
+    }
+
+    .card-desc {
+        font-size: 13px;
+        color: #6b7280;
+        line-height: 1.55;
+        margin-bottom: 18px;
+        flex: 1;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .card-footer-custom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: auto;
+    }
+
+    .card-price {
+        font-family: 'Outfit', sans-serif;
+        font-size: 20px;
+        font-weight: 700;
+        color: #0f0f1a;
+        letter-spacing: -0.02em;
+    }
+
+    .card-price-currency {
+        font-size: 13px;
+        font-weight: 500;
+        color: #6b7280;
+        margin-right: 1px;
+    }
+
+    .btn-view {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #6366f1;
+        color: #fff !important;
+        font-family: 'Inter', sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 8px 16px;
+        border-radius: 8px;
+        text-decoration: none;
+        border: none;
+        transition: background 0.18s, transform 0.15s;
+    }
+
+        .btn-view:hover {
+            background: #4f46e5;
+            transform: translateY(-1px);
+            color: #fff !important;
+        }
+
+        .btn-view svg {
+            transition: transform 0.15s;
+        }
+
+        .btn-view:hover svg {
+            transform: translateX(2px);
+        }
+
+    /* ── Empty state ── */
+    .empty-state {
+        text-align: center;
+        padding: 80px 24px;
+    }
+
+    .empty-icon {
+        width: 56px;
+        height: 56px;
+        background: #eef2ff;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+    }
+
+    .empty-state h3 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 20px;
+        font-weight: 600;
+        color: #0f0f1a;
+        margin-bottom: 8px;
+    }
+
+    .empty-state p {
+        font-size: 14px;
+        color: #9ca3af;
+    }
+
+    @@media (max-width: 600px) {
+        .page-header-inner {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .products-body {
+            padding: 24px 16px 48px;
+        }
+    }
+</style>
+
+<div class="products-root">
+
+    <!-- ── Page header ── -->
+    <div class="page-header">
+        <div class="page-header-inner">
+            <div class="page-header-left">
+                <div class="page-label">Catalog</div>
+                <h1>Products</h1>
+            </div>
+            @if (Model.Products.Any())
+            {
+                <div class="product-count-badge">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" /><path d="M16 3H8l-2 4h12l-2-4z" /></svg>
+                    @Model.Products.Count item@(Model.Products.Count == 1 ? "" : "s") available
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- ── Products grid ── -->
+    <div class="products-body">
+        @if (!Model.Products.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" /><path d="M16 3H8l-2 4h12l-2-4z" /></svg>
+                </div>
+                <h3>No products available</h3>
+                <p>Check back later — the catalog will be updated soon.</p>
+            </div>
+        }
+        else
+        {
+            <div class="products-grid">
+                @foreach (var p in Model.Products)
+                {
+                    <div class="product-card">
+                        <div class="card-top-bar"></div>
+                        <div class="card-img-area">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" />
+                                <path d="M16 3H8l-2 4h12l-2-4z" />
+                            </svg>
+                        </div>
+                        <div class="card-body-custom">
+                            <div class="card-sku">@p.Sku</div>
+                            <div class="card-title">@p.Name</div>
+                            <div class="card-desc">@(string.IsNullOrWhiteSpace(p.Description) ? "No description available." : p.Description)</div>
+                            <div class="card-footer-custom">
+                                <div class="card-price">
+                                    <span class="card-price-currency">$</span>@p.Price.ToString("N2")
+                                </div>
+                                <a asp-page="Details" asp-route-id="@p.ProductId" class="btn-view">
+                                    View
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
 </div>

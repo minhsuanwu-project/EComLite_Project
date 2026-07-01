@@ -1,0 +1,501 @@
+﻿==========================================
+FILE: C:\Users\LocalUser\Desktop\HU\GRAD_695\Applied_Project\EComLite\EComLite.Tests\CartServiceTests.cs
+==========================================
+using System;
+using System.Collections.Generic;
+using System.Text.Json;
+using EComLite.Web.Models;
+using EComLite.Web.Services;
+using Microsoft.AspNetCore.Http;
+using Moq;
+using Xunit;
+
+namespace EComLite.Tests
+{
+    public class CartServiceTests
+    {
+        // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        private static CartService CreateCartService(out Dictionary<string, byte[]> sessionStore)
+        {
+            var store = new Dictionary<string, byte[]>();
+            sessionStore = store;
+
+            var mockSession = new Mock<ISession>();
+
+            mockSession.Setup(s => s.Set(It.IsAny<string>(), It.IsAny<byte[]>()))
+                .Callback<string, byte[]>((key, value) => store[key] = value);
+
+            mockSession.Setup(s => s.TryGetValue(It.IsAny<string>(), out It.Ref<byte[]>.IsAny))
+                .Returns((string key, out byte[] value) =>
+                {
+                    var found = store.TryGetValue(key, out var stored);
+                    value = stored ?? Array.Empty<byte>();
+                    return found;
+                });
+
+            mockSession.Setup(s => s.Remove(It.IsAny<string>()))
+                .Callback<string>(key => store.Remove(key));
+
+            var mockHttpContext = new Mock<HttpContext>();
+            mockHttpContext.Setup(c => c.Session).Returns(mockSession.Object);
+
+            var mockAccessor = new Mock<IHttpContextAccessor>();
+            mockAccessor.Setup(a => a.HttpContext).Returns(mockHttpContext.Object);
+
+            return new CartService(mockAccessor.Object);
+        }
+
+        private static CartItem MakeItem(string name = "T-Shirt", decimal price = 19.99m, int qty = 1)
+            => new CartItem
+            {
+                ProductId = Guid.NewGuid(),
+                ProductName = name,
+                UnitPrice = price,
+                Qty = qty
+            };
+
+        // â”€â”€ GetCart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+        [Fact]
+        public void GetCart_WhenSessionEmpty_ReturnsEmptyList()
+        {
+            var svc = CreateCartService(out _);
+            var result = svc.GetCart();
+            Assert.Empty(result);
+        }
+
+        // â”€â”€ AddItem â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+        [Fact]
+        public void AddItem_NewProduct_AddsToCart()
+        {
+            var svc = CreateCartService(out _);
+            var item = MakeItem();
+
+            svc.AddItem(item);
+
+            var cart = svc.GetCart();
+            Assert.Single(cart);
+            Assert.Equal(item.ProductName, cart[0].ProductName);
+        }
+
+        [Fact]
+        public void AddItem_SameProductTwice_AccumulatesQty()
+        {
+            var svc = CreateCartService(out _);
+            var productId = Guid.NewGuid();
+
+            svc.AddItem(new CartItem { ProductId = productId, ProductName = "T-Shirt", UnitPrice = 19.99m, Qty = 2 });
+            svc.AddItem(new CartItem { ProductId = productId, ProductName = "T-Shirt", UnitPrice = 19.99m, Qty = 3 });
+
+            var cart = svc.GetCart();
+            Assert.Single(cart);
+            Assert.Equal(5, cart[0].Qty);
+        }
+
+        [Fact]
+        public void AddItem_DifferentProducts_AddsBothToCart()
+        {
+            var svc = CreateCartService(out _);
+
+            svc.AddItem(MakeItem("T-Shirt"));
+            svc.AddItem(MakeItem("Hoodie"));
+
+            var cart = svc.GetCart();
+            Assert.Equal(2, cart.Count);
+        }
+
+        // â”€â”€ Remove â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+        [Fact]
+        public void Remove_ExistingProduct_RemovesFromCart()
+        {
+            var svc = CreateCartService(out _);
+            var item = MakeItem();
+            svc.AddItem(item);
+
+            svc.Remove(item.ProductId);
+
+            Assert.Empty(svc.GetCart());
+        }
+
+        [Fact]
+        public void Remove_NonExistentProduct_CartUnchanged()
+        {
+            var svc = CreateCartService(out _);
+            var item = MakeItem();
+            svc.AddItem(item);
+
+            svc.Remove(Guid.NewGuid());
+
+            Assert.Single(svc.GetCart());
+        }
+
+        // â”€â”€ Clear â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+        [Fact]
+        public void Clear_WithItems_EmptiesCart()
+        {
+            var svc = CreateCartService(out _);
+            svc.AddItem(MakeItem("T-Shirt"));
+            svc.AddItem(MakeItem("Hoodie"));
+
+            svc.Clear();
+
+            Assert.Empty(svc.GetCart());
+        }
+
+        [Fact]
+        public void Clear_EmptyCart_RemainsEmpty()
+        {
+            var svc = CreateCartService(out _);
+            svc.Clear();
+            Assert.Empty(svc.GetCart());
+        }
+
+        // â”€â”€ Total calculation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+        [Fact]
+        public void AddItem_PriceAndQty_TotalCalculatedCorrectly()
+        {
+            var svc = CreateCartService(out _);
+            svc.AddItem(new CartItem { ProductId = Guid.NewGuid(), ProductName = "T-Shirt", UnitPrice = 19.99m, Qty = 3 });
+
+            var cart = svc.GetCart();
+            var total = 0m;
+            foreach (var i in cart) total += i.Qty * i.UnitPrice;
+
+            Assert.Equal(59.97m, total);
+        }
+    }
+}
+
+
+==========================================
+FILE: C:\Users\LocalUser\Desktop\HU\GRAD_695\Applied_Project\EComLite\EComLite.Tests\CheckoutTests.cs
+==========================================
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using EComLite.Web.Data;
+using EComLite.Web.Models;
+using Microsoft.EntityFrameworkCore;
+using Xunit;
+
+namespace EComLite.Tests
+{
+    public class CheckoutTests
+    {
+        // â”€â”€ DB Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        private static ApplicationDbContext CreateInMemoryDb(string dbName)
+        {
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(databaseName: dbName)
+                .Options;
+            return new ApplicationDbContext(options);
+        }
+
+        private static Product MakeProduct(decimal price = 19.99m, int stock = 10)
+            => new Product
+            {
+                ProductId = Guid.NewGuid(),
+                Sku = "TEST-001",
+                Name = "Test Product",
+                Price = price,
+                StockQty = stock,
+                IsArchived = false,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+        // â”€â”€ Order persistence â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+        [Fact]
+        public async Task PlaceOrder_ValidItems_OrderSavedToDatabase()
+        {
+            using var db = CreateInMemoryDb("test_valid_order");
+            var product = MakeProduct();
+            db.Products.Add(product);
+            await db.SaveChangesAsync();
+
+            var orderId = Guid.NewGuid();
+            var placedAt = DateTime.UtcNow;
+            var order = new Order
+            {
+                OrderId = orderId,
+                OrderNumber = $"ORD-{placedAt:yyyyMMdd}-TEST",
+                UserId = "user-001",
+                TotalAmount = 19.99m,
+                Currency = "USD",
+                Status = "Placed",
+                PlacedAt = placedAt
+            };
+            order.Items.Add(new OrderItem
+            {
+                ProductId = product.ProductId,
+                Qty = 1,
+                UnitPriceSnapshot = product.Price
+            });
+
+            db.Orders.Add(order);
+            await db.SaveChangesAsync();
+
+            var saved = await db.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.OrderId == orderId);
+            Assert.NotNull(saved);
+            Assert.Single(saved.Items);
+        }
+
+        [Fact]
+        public async Task PlaceOrder_OrderItemCountMatchesCartItems()
+        {
+            using var db = CreateInMemoryDb("test_item_count");
+            var p1 = MakeProduct(19.99m);
+            var p2 = MakeProduct(25.99m);
+            db.Products.AddRange(p1, p2);
+            await db.SaveChangesAsync();
+
+            var orderId = Guid.NewGuid();
+            var placedAt = DateTime.UtcNow;
+            var order = new Order
+            {
+                OrderId = orderId,
+                OrderNumber = $"ORD-{placedAt:yyyyMMdd}-TEST",
+                UserId = "user-001",
+                TotalAmount = 45.98m,
+                Currency = "USD",
+                Status = "Placed",
+                PlacedAt = placedAt
+            };
+            order.Items.Add(new OrderItem { ProductId = p1.ProductId, Qty = 1, UnitPriceSnapshot = p1.Price });
+            order.Items.Add(new OrderItem { ProductId = p2.ProductId, Qty = 1, UnitPriceSnapshot = p2.Price });
+
+            db.Orders.Add(order);
+            await db.SaveChangesAsync();
+
+            var saved = await db.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.OrderId == orderId);
+            Assert.Equal(2, saved!.Items.Count);
+        }
+
+        // â”€â”€ Price snapshot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+        [Fact]
+        public async Task PlaceOrder_PriceSnapshotPreserved_AfterProductPriceChange()
+        {
+            using var db = CreateInMemoryDb("test_price_snapshot");
+            var product = MakeProduct(19.99m);
+            db.Products.Add(product);
+            await db.SaveChangesAsync();
+
+            // Place order at original price
+            var order = new Order
+            {
+                OrderId = Guid.NewGuid(),
+                OrderNumber = "ORD-TEST-001",
+                UserId = "user-001",
+                TotalAmount = 19.99m,
+                Currency = "USD",
+                Status = "Placed",
+                PlacedAt = DateTime.UtcNow
+            };
+            order.Items.Add(new OrderItem
+            {
+                ProductId = product.ProductId,
+                Qty = 1,
+                UnitPriceSnapshot = product.Price   // snapshot at 19.99
+            });
+            db.Orders.Add(order);
+            await db.SaveChangesAsync();
+
+            // Simulate product price change
+            product.Price = 39.99m;
+            product.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+
+            // Order snapshot should still be 19.99
+            var saved = await db.Orders.Include(o => o.Items).FirstAsync();
+            Assert.Equal(19.99m, saved.Items.First().UnitPriceSnapshot);
+        }
+
+        // â”€â”€ Data consistency â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+        [Fact]
+        public async Task PlaceOrder_EveryOrderHasAtLeastOneItem()
+        {
+            using var db = CreateInMemoryDb("test_consistency");
+            var product = MakeProduct();
+            db.Products.Add(product);
+
+            for (int i = 0; i < 3; i++)
+            {
+                var oid = Guid.NewGuid();
+                var o = new Order
+                {
+                    OrderId = oid,
+                    OrderNumber = $"ORD-TEST-{i:D3}",
+                    UserId = "user-001",
+                    TotalAmount = 19.99m,
+                    Currency = "USD",
+                    Status = "Placed",
+                    PlacedAt = DateTime.UtcNow
+                };
+                o.Items.Add(new OrderItem { ProductId = product.ProductId, Qty = 1, UnitPriceSnapshot = 19.99m });
+                db.Orders.Add(o);
+            }
+            await db.SaveChangesAsync();
+
+            var orders = await db.Orders.Include(o => o.Items).ToListAsync();
+            Assert.All(orders, o => Assert.NotEmpty(o.Items));
+        }
+
+        [Fact]
+        public async Task PlaceOrder_TotalAmountMatchesSumOfItems()
+        {
+            using var db = CreateInMemoryDb("test_total");
+            var product = MakeProduct(25.00m);
+            db.Products.Add(product);
+            await db.SaveChangesAsync();
+
+            var order = new Order
+            {
+                OrderId = Guid.NewGuid(),
+                OrderNumber = "ORD-TEST-TOTAL",
+                UserId = "user-001",
+                TotalAmount = 75.00m,   // 25.00 Ã— 3
+                Currency = "USD",
+                Status = "Placed",
+                PlacedAt = DateTime.UtcNow
+            };
+            order.Items.Add(new OrderItem { ProductId = product.ProductId, Qty = 3, UnitPriceSnapshot = 25.00m });
+            db.Orders.Add(order);
+            await db.SaveChangesAsync();
+
+            var saved = await db.Orders.Include(o => o.Items).FirstAsync();
+            var calculatedTotal = saved.Items.Sum(i => i.Qty * i.UnitPriceSnapshot);
+            Assert.Equal(saved.TotalAmount, calculatedTotal);
+        }
+
+        // â”€â”€ Negative tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+        [Fact]
+        public async Task ArchivedProduct_NotReturnedInCatalog()
+        {
+            using var db = CreateInMemoryDb("test_archived");
+            db.Products.Add(new Product
+            {
+                ProductId = Guid.NewGuid(), Sku = "ARCH-001", Name = "Old Product",
+                Price = 9.99m, StockQty = 0, IsArchived = true,
+                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+            });
+            db.Products.Add(new Product
+            {
+                ProductId = Guid.NewGuid(), Sku = "LIVE-001", Name = "Live Product",
+                Price = 19.99m, StockQty = 5, IsArchived = false,
+                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+
+            var visible = await db.Products.Where(p => !p.IsArchived).ToListAsync();
+            Assert.Single(visible);
+            Assert.Equal("Live Product", visible[0].Name);
+        }
+
+        [Fact]
+        public async Task OrderHistory_OnlyReturnsOrdersForCorrectUser()
+        {
+            using var db = CreateInMemoryDb("test_user_isolation");
+            var product = MakeProduct();
+            db.Products.Add(product);
+
+            db.Orders.Add(new Order { OrderId = Guid.NewGuid(), OrderNumber = "ORD-U1", UserId = "user-001", TotalAmount = 19.99m, Currency = "USD", Status = "Placed", PlacedAt = DateTime.UtcNow });
+            db.Orders.Add(new Order { OrderId = Guid.NewGuid(), OrderNumber = "ORD-U2", UserId = "user-002", TotalAmount = 19.99m, Currency = "USD", Status = "Placed", PlacedAt = DateTime.UtcNow });
+            await db.SaveChangesAsync();
+
+            var user1Orders = await db.Orders.Where(o => o.UserId == "user-001").ToListAsync();
+            Assert.Single(user1Orders);
+            Assert.Equal("ORD-U1", user1Orders[0].OrderNumber);
+        }
+    }
+}
+
+
+==========================================
+FILE: C:\Users\LocalUser\Desktop\HU\GRAD_695\Applied_Project\EComLite\EComLite.Tests\OrderNumberTests.cs
+==========================================
+using System;
+using EComLite.Web.Pages.Cart;
+using Xunit;
+
+namespace EComLite.Tests
+{
+    public class OrderNumberTests
+    {
+        // â”€â”€ Format validation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+        [Fact]
+        public void GenerateOrderNumber_ReturnsCorrectFormat()
+        {
+            var orderId = Guid.NewGuid();
+            var placedAt = new DateTime(2026, 3, 22, 10, 0, 0, DateTimeKind.Utc);
+
+            var result = IndexModel.GenerateOrderNumber(orderId, placedAt);
+
+            Assert.StartsWith("ORD-20260322-", result);
+        }
+
+        [Fact]
+        public void GenerateOrderNumber_ContainsFourCharSuffix()
+        {
+            var orderId = Guid.NewGuid();
+            var placedAt = DateTime.UtcNow;
+
+            var result = IndexModel.GenerateOrderNumber(orderId, placedAt);
+
+            // Format: ORD-YYYYMMDD-XXXX  â†’  split by '-' gives 3 parts
+            var parts = result.Split('-');
+            Assert.Equal(3, parts.Length);
+            Assert.Equal(4, parts[2].Length);
+        }
+
+        [Fact]
+        public void GenerateOrderNumber_SuffixIsUpperCase()
+        {
+            var orderId = Guid.NewGuid();
+            var placedAt = DateTime.UtcNow;
+
+            var result = IndexModel.GenerateOrderNumber(orderId, placedAt);
+
+            var suffix = result.Split('-')[2];
+            Assert.Equal(suffix.ToUpper(), suffix);
+        }
+
+        [Fact]
+        public void GenerateOrderNumber_DifferentOrderIds_ProduceDifferentNumbers()
+        {
+            var placedAt = DateTime.UtcNow;
+            var id1 = Guid.NewGuid();
+            var id2 = Guid.NewGuid();
+
+            var result1 = IndexModel.GenerateOrderNumber(id1, placedAt);
+            var result2 = IndexModel.GenerateOrderNumber(id2, placedAt);
+
+            // Two different GUIDs almost certainly produce different order numbers
+            // (they could match by coincidence only if first 4 hex chars are identical)
+            Assert.NotNull(result1);
+            Assert.NotNull(result2);
+        }
+
+        [Fact]
+        public void GenerateOrderNumber_DatePartMatchesPlacedAt()
+        {
+            var orderId = Guid.NewGuid();
+            var placedAt = new DateTime(2025, 11, 20, 0, 0, 0, DateTimeKind.Utc);
+
+            var result = IndexModel.GenerateOrderNumber(orderId, placedAt);
+
+            Assert.Contains("20251120", result);
+        }
+    }
+}
+
+

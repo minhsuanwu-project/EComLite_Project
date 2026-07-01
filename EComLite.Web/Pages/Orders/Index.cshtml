@@ -4,48 +4,400 @@
     ViewData["Title"] = "My Orders";
 }
 
-<h1>My Orders</h1>
+<style>
+    .orders-root {
+        font-family: 'Inter', sans-serif;
+        background: #fafafa;
+        min-height: calc(100vh - 60px);
+    }
 
-@if (TempData["Message"] != null)
-{
-    <div class="alert alert-success">@TempData["Message"]</div>
-}
+    /* ── Page header ── */
+    .page-header {
+        background: #ffffff;
+        border-bottom: 1px solid #f0f0f5;
+        padding: 40px 0 32px;
+    }
 
-@if (!Model.Orders.Any())
-{
-    <p>You have no orders yet.</p>
-}
-else
-{
-    <table class="table">
-        <thead>
-        <tr>
-            <th>Order #</th>
-            <th class="text-center">Qty</th>           
-            <th>Total Amount</th>
-            <th>Placed At</th>
-            <th>Status</th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (var o in Model.Orders)
+    .page-header-inner {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 0 28px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .page-label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #6366f1;
+        margin-bottom: 6px;
+    }
+
+    .page-header-inner h1 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        color: #0f0f1a;
+        margin: 0;
+        line-height: 1.15;
+    }
+
+    .order-count-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #eef2ff;
+        color: #4f46e5;
+        font-size: 12px;
+        font-weight: 500;
+        padding: 5px 12px;
+        border-radius: 99px;
+        border: 1px solid #c7d2fe;
+        white-space: nowrap;
+    }
+
+    /* ── Alert ── */
+    .orders-body {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 32px 28px 64px;
+    }
+
+    .alert-success-custom {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 10px;
+        padding: 12px 16px;
+        font-size: 14px;
+        color: #15803d;
+        margin-bottom: 24px;
+    }
+
+    /* ── Orders table card ── */
+    .orders-card {
+        background: #ffffff;
+        border: 1px solid #e9eaee;
+        border-radius: 16px;
+        overflow: hidden;
+    }
+
+    .orders-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .orders-table thead tr {
+        border-bottom: 1px solid #f0f0f5;
+    }
+
+    .orders-table thead th {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #9ca3af;
+        padding: 14px 20px;
+        text-align: left;
+        white-space: nowrap;
+        background: #fafafa;
+    }
+
+    .orders-table thead th.col-right {
+        text-align: right;
+    }
+
+    .orders-table tbody tr {
+        border-bottom: 1px solid #f7f7f9;
+        transition: background 0.15s;
+        opacity: 0;
+        animation: rowIn 0.35s ease forwards;
+    }
+
+    .orders-table tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    .orders-table tbody tr:hover {
+        background: #fafbff;
+    }
+
+    @for (int i = 1; i <= 20; i++)
+    {
+        <text>.orders-table tbody tr:nth-child(@i) { animation-delay: @(i * 0.04)s; }</text>
+    }
+
+    @@keyframes rowIn {
+        to { opacity: 1; }
+    }
+
+    .orders-table tbody td {
+        padding: 16px 20px;
+        font-size: 14px;
+        color: #374151;
+        vertical-align: middle;
+    }
+
+    /* Order number link */
+    .order-number-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        color: #4f46e5;
+        text-decoration: none;
+        letter-spacing: 0.01em;
+        transition: color 0.15s;
+    }
+
+    .order-number-link:hover {
+        color: #3730a3;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+
+    /* Qty pill */
+    .qty-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 28px;
+        height: 24px;
+        padding: 0 8px;
+        background: #f3f4f6;
+        color: #374151;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 6px;
+    }
+
+    /* Amount */
+    .td-amount {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 600;
+        color: #0f0f1a;
+        font-size: 15px;
+        letter-spacing: -0.01em;
+    }
+
+    /* Date */
+    .td-date {
+        color: #6b7280;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    /* Status badge */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        font-weight: 500;
+        padding: 4px 10px;
+        border-radius: 99px;
+    }
+
+    .status-badge-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+    }
+
+    .status-placed {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+    }
+
+    .status-placed .status-badge-dot {
+        background: #3b82f6;
+    }
+
+    .status-shipped {
+        background: #f0fdf4;
+        color: #15803d;
+        border: 1px solid #bbf7d0;
+    }
+
+    .status-shipped .status-badge-dot {
+        background: #22c55e;
+    }
+
+    .status-cancelled {
+        background: #fff1f2;
+        color: #be123c;
+        border: 1px solid #fecdd3;
+    }
+
+    .status-cancelled .status-badge-dot {
+        background: #f43f5e;
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+        text-align: center;
+        padding: 72px 24px;
+    }
+
+    .empty-icon {
+        width: 56px;
+        height: 56px;
+        background: #eef2ff;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+    }
+
+    .empty-state h3 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 20px;
+        font-weight: 600;
+        color: #0f0f1a;
+        margin-bottom: 8px;
+    }
+
+    .empty-state p {
+        font-size: 14px;
+        color: #9ca3af;
+        margin-bottom: 24px;
+    }
+
+    .btn-browse {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: #6366f1;
+        color: #fff !important;
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        padding: 10px 20px;
+        border-radius: 9px;
+        text-decoration: none;
+        transition: background 0.18s, transform 0.15s;
+    }
+
+    .btn-browse:hover {
+        background: #4f46e5;
+        transform: translateY(-1px);
+    }
+
+    @@media (max-width: 640px) {
+        .orders-body { padding: 20px 14px 48px; }
+        .page-header-inner { flex-direction: column; align-items: flex-start; }
+        .orders-table thead th,
+        .orders-table tbody td { padding: 12px 14px; }
+        .td-date { display: none; }
+    }
+</style>
+
+<div class="orders-root">
+
+    <!-- ── Page header ── -->
+    <div class="page-header">
+        <div class="page-header-inner">
+            <div>
+                <div class="page-label">Account</div>
+                <h1>My Orders</h1>
+            </div>
+            @if (Model.Orders.Any())
+            {
+                <div class="order-count-badge">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                    @Model.Orders.Count order@(Model.Orders.Count == 1 ? "" : "s")
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="orders-body">
+
+        @if (TempData["Message"] != null)
         {
-            <tr>
-                <td>
-                    <!-- Use column OrderNumber as link -->
-                    <a asp-page="./Details" asp-route-id="@o.OrderId">
-                        @o.OrderNumber
-                    </a>
-                </td>
-                <td class="text-center">
-                    @o.TotalQty
-                </td>               
-                <td>@o.TotalAmount.ToString("C")</td>
-                <td>@o.PlacedAt.ToLocalTime()</td>
-                <td>@o.Status</td>
-            </tr>
+            <div class="alert-success-custom">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                @TempData["Message"]
+            </div>
         }
-        </tbody>
-    </table>
-}
 
+        @if (!Model.Orders.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                </div>
+                <h3>No orders yet</h3>
+                <p>Your order history will appear here once you place your first order.</p>
+                <a asp-page="/Products/Index" class="btn-browse">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 3H8l-2 4h12l-2-4z"/></svg>
+                    Browse products
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="orders-card">
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Qty</th>
+                            <th class="col-right">Total</th>
+                            <th>Placed at</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var o in Model.Orders)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-page="./Details" asp-route-id="@o.OrderId" class="order-number-link">
+                                        @o.OrderNumber
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    </a>
+                                </td>
+                                <td>
+                                    <span class="qty-pill">@o.TotalQty</span>
+                                </td>
+                                <td class="td-amount" style="text-align:right;">
+                                    @o.TotalAmount.ToString("C")
+                                </td>
+                                <td class="td-date">
+                                    @o.PlacedAt.ToLocalTime().ToString("MMM d, yyyy · h:mm tt")
+                                </td>
+                                <td>
+                                    @{
+                                        var statusClass = o.Status?.ToLower() switch {
+                                            "shipped"   => "status-shipped",
+                                            "cancelled" => "status-cancelled",
+                                            _           => "status-placed"
+                                        };
+                                    }
+                                    <span class="status-badge @statusClass">
+                                        <span class="status-badge-dot"></span>
+                                        @o.Status
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+    </div>
+</div>

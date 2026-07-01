@@ -17,12 +17,17 @@ namespace EComLite.Web.Pages.Cart
         private readonly CartService _cartService;
         private readonly ApplicationDbContext _db;
         private readonly UserManager<IdentityUser> _userManager;
-
-        public IndexModel(CartService cartService, ApplicationDbContext db, UserManager<IdentityUser> userManager)
+        private readonly ILogger<IndexModel> _logger;
+        public IndexModel(
+            CartService cartService,
+            ApplicationDbContext db,
+            UserManager<IdentityUser> userManager,
+            ILogger<IndexModel> logger)
         {
             _cartService = cartService;
             _db = db;
             _userManager = userManager;
+            _logger = logger;
         }
 
         public List<CartItem> Items { get; set; } = new();
@@ -48,6 +53,7 @@ namespace EComLite.Web.Pages.Cart
             {
                 return Challenge();
             }
+
             var placedAt = DateTime.UtcNow;
             var orderId = Guid.NewGuid();
 
@@ -59,7 +65,7 @@ namespace EComLite.Web.Pages.Cart
                 TotalAmount = Total,
                 Currency = "USD",
                 Status = "Placed",
-                PlacedAt = System.DateTime.UtcNow
+                PlacedAt = placedAt
             };
 
             foreach (var item in Items)
@@ -72,13 +78,34 @@ namespace EComLite.Web.Pages.Cart
                 });
             }
 
-            _db.Orders.Add(order);
-            await _db.SaveChangesAsync();
+            using var transaction = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                _db.Orders.Add(order);
+                await _db.SaveChangesAsync();
+                //throw new Exception("Simulating a database write failure midway！");
+                await transaction.CommitAsync();
 
-            _cartService.Clear();
+                _cartService.Clear();
 
-            TempData["Message"] = $"Order {order.OrderId} placed successfully.";
-            return RedirectToPage("/Orders/Index");
+                _logger.LogInformation(
+                    "Checkout succeeded. OrderId={OrderId}, OrderNumber={OrderNumber}, UserId={UserId}, Total={Total}, ItemCount={ItemCount}",
+                    order.OrderId, order.OrderNumber, user.Id, order.TotalAmount, Items.Count);
+
+                TempData["Message"] = $"Order {order.OrderNumber} placed successfully.";
+                return RedirectToPage("/Orders/Index");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+
+                _logger.LogError(ex,
+                    "Checkout failed. UserId={UserId}, ItemCount={ItemCount}, AttemptedTotal={Total}",
+                    user.Id, Items.Count, Total);
+
+                TempData["Message"] = "An error occurred while placing your order. Please try again.";
+                return RedirectToPage();
+            }           
         }
         public IActionResult OnPostClear()
         {
@@ -90,7 +117,7 @@ namespace EComLite.Web.Pages.Cart
             _cartService.Remove(productId);
             return RedirectToPage();
         }
-        private string GenerateOrderNumber(Guid orderId, DateTime placedAtUtc)
+        internal static string GenerateOrderNumber(Guid orderId, DateTime placedAtUtc)
         {            
             var randomPart = orderId.ToString("N")[..4].ToUpper(); // Get first 4-digit from OrderId 
             return $"ORD-{placedAtUtc:yyyyMMdd}-{randomPart}";

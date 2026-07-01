@@ -1,20 +1,416 @@
 ﻿@page "{id:guid}"
 @model EComLite.Web.Pages.Products.DetailsModel
 @{
-    ViewData["Title"] = "Product Details";
+    ViewData["Title"] = Model.Product.Name;
 }
 
-<h1>@Model.Product.Name</h1>
+<style>
+    .detail-root {
+        font-family: 'Inter', sans-serif;
+        background: #fafafa;
+        min-height: calc(100vh - 60px);
+    }
 
-<p>@Model.Product.Description</p>
-<p class="fw-bold">@Model.Product.Price.ToString("C")</p>
+    /* ── Breadcrumb ── */
+    .breadcrumb-bar {
+        background: #ffffff;
+        border-bottom: 1px solid #f0f0f5;
+        padding: 14px 0;
+    }
 
-<form method="post" asp-page-handler="AddToCart">
-    <input type="hidden" name="id" value="@Model.Product.ProductId" />
-    <div class="mb-3">
-        <label asp-for="Qty" class="form-label"></label>
-        <input asp-for="Qty" class="form-control" />
-        <span asp-validation-for="Qty" class="text-danger"></span>
+    .breadcrumb-inner {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 0 28px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #9ca3af;
+    }
+
+        .breadcrumb-inner a {
+            color: #6366f1;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.15s;
+        }
+
+            .breadcrumb-inner a:hover {
+                color: #4f46e5;
+            }
+
+    .breadcrumb-sep {
+        color: #d1d5db;
+        font-size: 12px;
+    }
+
+    .breadcrumb-current {
+        color: #374151;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 240px;
+    }
+
+    /* ── Main layout ── */
+    .detail-body {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 36px 28px 72px;
+        display: grid;
+        grid-template-columns: 1fr 420px;
+        gap: 32px;
+        align-items: start;
+    }
+
+    /* ── Image panel ── */
+    .product-img-panel {
+        background: #ffffff;
+        border: 1px solid #e9eaee;
+        border-radius: 20px;
+        overflow: hidden;
+        aspect-ratio: 4/3;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+        opacity: 0;
+        transform: translateX(-16px);
+        animation: slideInLeft 0.5s ease forwards 0.05s;
+    }
+
+        .product-img-panel svg {
+            opacity: 0.3;
+        }
+
+    @@keyframes slideInLeft {
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    /* ── Info panel ── */
+    .product-info-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        opacity: 0;
+        transform: translateX(16px);
+        animation: slideInRight 0.5s ease forwards 0.12s;
+    }
+
+    @@keyframes slideInRight {
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .info-sku {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #6366f1;
+        margin-bottom: 10px;
+    }
+
+    .info-name {
+        font-family: 'Outfit', sans-serif;
+        font-size: clamp(26px, 4vw, 36px);
+        font-weight: 700;
+        color: #0f0f1a;
+        letter-spacing: -0.025em;
+        line-height: 1.15;
+        margin-bottom: 14px;
+    }
+
+    .info-desc {
+        font-size: 15px;
+        color: #6b7280;
+        line-height: 1.7;
+        margin-bottom: 24px;
+    }
+
+    /* price block */
+    .price-block {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        margin-bottom: 28px;
+        padding-bottom: 28px;
+        border-bottom: 1px solid #f0f0f5;
+    }
+
+    .price-currency {
+        font-family: 'Outfit', sans-serif;
+        font-size: 20px;
+        font-weight: 500;
+        color: #6b7280;
+        align-self: flex-start;
+        margin-top: 6px;
+    }
+
+    .price-value {
+        font-family: 'Outfit', sans-serif;
+        font-size: 42px;
+        font-weight: 700;
+        color: #0f0f1a;
+        letter-spacing: -0.04em;
+        line-height: 1;
+    }
+
+    .price-usd {
+        font-size: 13px;
+        color: #9ca3af;
+        font-weight: 500;
+        align-self: flex-end;
+        margin-bottom: 4px;
+    }
+
+    /* ── Add to cart form ── */
+    .atc-form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .qty-label {
+        font-size: 13px;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    .qty-controls {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        overflow: hidden;
+        width: fit-content;
+    }
+
+    .qty-btn {
+        width: 40px;
+        height: 44px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6b7280;
+        font-size: 18px;
+        font-weight: 400;
+        transition: background 0.15s, color 0.15s;
+        flex-shrink: 0;
+    }
+
+        .qty-btn:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+    .qty-input {
+        width: 56px;
+        height: 44px;
+        border: none;
+        border-left: 1px solid #e5e7eb;
+        border-right: 1px solid #e5e7eb;
+        background: #fff;
+        text-align: center;
+        font-family: 'Outfit', sans-serif;
+        font-size: 16px;
+        font-weight: 600;
+        color: #0f0f1a;
+        outline: none;
+        -moz-appearance: textfield;
+    }
+
+        .qty-input::-webkit-outer-spin-button,
+        .qty-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+        }
+
+    .btn-atc {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: #6366f1;
+        color: #fff;
+        font-family: 'Inter', sans-serif;
+        font-size: 15px;
+        font-weight: 500;
+        padding: 13px 28px;
+        border-radius: 11px;
+        border: none;
+        cursor: pointer;
+        transition: background 0.18s, transform 0.15s, box-shadow 0.18s;
+        box-shadow: 0 1px 3px rgba(99,102,241,0.25), 0 4px 14px rgba(99,102,241,0.18);
+        width: 100%;
+    }
+
+        .btn-atc:hover {
+            background: #4f46e5;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(99,102,241,0.3), 0 8px 20px rgba(99,102,241,0.22);
+        }
+
+        .btn-atc:active {
+            transform: translateY(0);
+        }
+
+    /* ── Meta info strip ── */
+    .meta-strip {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid #f0f0f5;
+    }
+
+    .meta-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #6b7280;
+    }
+
+        .meta-row svg {
+            color: #6366f1;
+            flex-shrink: 0;
+        }
+
+        .meta-row strong {
+            color: #374151;
+            font-weight: 500;
+        }
+
+    /* ── Validation error ── */
+    .field-validation-error {
+        font-size: 12px;
+        color: #dc2626;
+    }
+
+    @@media (max-width: 768px) {
+        .detail-body {
+            grid-template-columns: 1fr;
+            padding: 20px 16px 48px;
+        }
+
+        .product-img-panel {
+            aspect-ratio: 16/9;
+        }
+
+        .breadcrumb-inner {
+            padding: 0 16px;
+        }
+    }
+</style>
+
+<div class="detail-root">
+
+    <!-- ── Breadcrumb ── -->
+    <div class="breadcrumb-bar">
+        <div class="breadcrumb-inner">
+            <a asp-page="/Products/Index">Products</a>
+            <span class="breadcrumb-sep">›</span>
+            <span class="breadcrumb-current">@Model.Product.Name</span>
+        </div>
     </div>
-    <button type="submit" class="btn btn-success">Add to Cart</button>
-</form>
+
+    <!-- ── Main ── -->
+    <div class="detail-body">
+
+        <!-- Left: image -->
+        <div class="product-img-panel">
+            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" />
+                <path d="M16 3H8l-2 4h12l-2-4z" />
+            </svg>
+        </div>
+
+        <!-- Right: info + form -->
+        <div class="product-info-panel">
+
+            <div class="info-sku">SKU: @Model.Product.Sku</div>
+            <h1 class="info-name">@Model.Product.Name</h1>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Product.Description))
+            {
+                <p class="info-desc">@Model.Product.Description</p>
+            }
+
+            <div class="price-block">
+                <span class="price-currency">$</span>
+                <span class="price-value">@Model.Product.Price.ToString("N2")</span>
+                <span class="price-usd">USD</span>
+            </div>
+
+            <!-- Add to cart form -->
+            <form method="post" asp-page-handler="AddToCart" class="atc-form">
+                <input type="hidden" name="id" value="@Model.Product.ProductId" />
+
+                <div>
+                    <label class="qty-label">Quantity</label>
+                    <div class="qty-controls">
+                        <button type="button" class="qty-btn" onclick="adjustQty(-1)">−</button>
+                        <input asp-for="Qty"
+                               id="qty-field"
+                               class="qty-input"
+                               type="number"
+                               min="1"
+                               max="99" />
+                        <button type="button" class="qty-btn" onclick="adjustQty(1)">+</button>
+                    </div>
+                    <span asp-validation-for="Qty" class="field-validation-error"></span>
+                </div>
+
+                <button type="submit" class="btn-atc">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="9" cy="21" r="1" />
+                        <circle cx="20" cy="21" r="1" />
+                        <path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6" />
+                    </svg>
+                    Add to Cart
+                </button>
+            </form>
+
+            <!-- Meta info -->
+            <div class="meta-strip">
+                <div class="meta-row">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+                    <span>Secure checkout — orders are processed atomically</span>
+                </div>
+                <div class="meta-row">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                    <span>Price locked at <strong>$@Model.Product.Price.ToString("N2")</strong> when you order</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function adjustQty(delta) {
+            var input = document.getElementById('qty-field');
+            var current = parseInt(input.value) || 1;
+            var next = Math.max(1, Math.min(99, current + delta));
+            input.value = next;
+        }
+    </script>
+}
