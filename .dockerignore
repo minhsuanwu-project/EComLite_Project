@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+**/*.db
+**/*.sqlite
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/secrets.json
+.git/
+.github/
+README.md
