@@ -10,9 +10,9 @@
 - **Semester:** Summer 2026
 - **Repository URL:** https://github.com/minhsuanwu-project/EComLite_Project
 - **Current Branch:** master
-- **Current Commit SHA:** bef575f9aec487618cb371bccca76e905bab7664
+- **Current Commit SHA:** a965859a695db8a70e90b048e1615986a58845a7
 - **Current Release Version:** v1.0
-- **Document Version:** 0.2
+- **Document Version:** 0.3
 - **Last Updated:** 2026-07-24
 
 ## Revision History
@@ -20,6 +20,7 @@
 | Version | Date | Git Commit | Description | Author |
 |---|---|---|---|---|
 | 0.1 | 2026-07-24 | bef575f9aec487618cb371bccca76e905bab7664 | Initial PRD created from repository evidence for authentication, catalog, cart, checkout, orders, tests, Docker, and CI. | GitHub Copilot |
+| 0.3 | 2026-07-24 | a965859a695db8a70e90b048e1615986a58845a7 | Added Q1/Q2/Q3 behavior classification to Section 8 and supplied Preventative (Q2) and Responsive (Q3) functional requirements for every high-priority undesirable event (Risk Score >= 8), grounded in repository evidence with remaining gaps marked To Be Completed; extended the Section 14 traceability matrix accordingly. | Min Hsuan Wu |
 | 0.2 | 2026-07-24 | bef575f9aec487618cb371bccca76e905bab7664 | Manual review corrections: fixed Section 6 risk-priority sort order; aligned Section 1 / Section 15 version plan with released tag `v1.0` and the Version 2 roadmap; added Checkout race-condition (UE-4.1-02) and mid-checkout session-expiry (UE-4.1-03) risks from the project Risk Register, with matching risk analysis, mitigation, functional requirements, and traceability; added Level-2 capability 4.2 Calculate Order Total with its undesirable event, risk, mitigation, functional requirement, and traceability; filled cover-page fields; added Idempotency Key and Order Status Lifecycle glossary terms. | Min Hsuan Wu |
 
 ## Table of Contents
@@ -259,25 +260,47 @@ The project provides a lightweight e-commerce web application that allows users 
 
 # 8. Functional Requirements
 
-| Requirement ID | Level-2 Capability | Functional Requirement |
-|---|---|---|
-| FR-1.1.1 | Register User | The Identity system shall register a user account within one registration submission. |
-| FR-1.2.1 | Authenticate User | The authentication service shall authenticate a registered user within two seconds. |
-| FR-2.1.1 | View Product Catalog | The web application shall display only non-archived products within two seconds of a catalog request. |
-| FR-2.2.1 | View Product Details | The product detail page shall display a valid product’s details within two seconds of a request. |
-| FR-3.1.1 | Add Item To Cart | The cart service shall add a new cart item or increase quantity within one request cycle. |
-| FR-3.2.1 | Remove Item From Cart | The cart service shall remove the requested product from the cart within one request cycle. |
-| FR-3.3.1 | Clear Cart | The cart service shall clear all cart contents within one request cycle. |
-| FR-4.1.1 | Place Order | The checkout process shall create an order with at least one order item within one request cycle. |
-| FR-4.1.2 | Place Order | The Checkout PageModel shall accept exactly one order per checkout submission by enforcing a unique idempotency key within the existing database transaction. |
-| FR-4.1.3 | Place Order | The Checkout PageModel shall reject a duplicate checkout submission and return the existing order confirmation instead of creating a new order. |
-| FR-4.1.4 | Place Order | The CartService shall persist cart contents keyed by user ID so the cart survives authentication session expiry during checkout. |
-| FR-4.1.5 | Place Order | The application shall redirect an expired-session user to re-authentication while preserving the checkout return URL and the persisted cart. |
-| FR-4.2.1 | Calculate Order Total | The Checkout PageModel shall calculate the order total as the sum of each line item’s quantity multiplied by its unit-price snapshot within one request cycle. |
-| FR-5.1.1 | View Order History | The order history page shall display only the authenticated user’s orders within one request cycle. |
-| FR-5.2.1 | View Order Details | The order details page shall display only the authenticated user’s order details within one request cycle. |
-| FR-6.1.1 | Build Application Container | The Docker build shall produce a runnable application image within one build invocation. |
-| FR-6.2.1 | Run Application With Database | The application shall start successfully with SQL Server in Docker within one container startup sequence. |
+Each functional requirement is classified by behavior type:
+
+- **Q1 (Desired):** what the system shall do.
+- **Q2 (Preventative):** what the system shall not do, or how an undesirable event is prevented.
+- **Q3 (Responsive):** how the system responds when an undesirable condition occurs.
+
+Q2 and Q3 requirements are provided for the highest-priority undesirable events (Risk Score ≥ 8). Q2/Q3 coverage for lower-priority events (Risk Score ≤ 6) is **To Be Completed**.
+
+| Requirement ID | Level-2 Capability | Q-Type | Functional Requirement |
+|---|---|---|---|
+| FR-1.1.1 | Register User | Q1 | The Identity system shall register a user account within one registration submission. |
+| FR-1.2.1 | Authenticate User | Q1 | The authentication service shall authenticate a registered user within two seconds. |
+| FR-1.2.2 | Authenticate User | Q2 | The authentication service shall not grant access when credentials are invalid or the account email is unconfirmed (`SignIn.RequireConfirmedAccount` is enabled), and shall not reveal whether an email is registered. Account lockout after repeated failed attempts is **To Be Completed**. |
+| FR-1.2.3 | Authenticate User | Q3 | When authentication fails, the sign-in page shall display a generic error message and allow the user to retry within the same session. |
+| FR-2.1.1 | View Product Catalog | Q1 | The web application shall display only non-archived products within two seconds of a catalog request. |
+| FR-2.2.1 | View Product Details | Q1 | The product detail page shall display a valid product’s details within two seconds of a request. |
+| FR-3.1.1 | Add Item To Cart | Q1 | The cart service shall add a new cart item or increase quantity within one request cycle. |
+| FR-3.1.2 | Add Item To Cart | Q2 | The cart service shall not create a duplicate cart line for a product already in the cart; it shall increment the existing line quantity instead. |
+| FR-3.1.3 | Add Item To Cart | Q3 | If the stored cart cannot be read, the cart service shall return an empty cart rather than failing the request. |
+| FR-3.2.1 | Remove Item From Cart | Q1 | The cart service shall remove the requested product from the cart within one request cycle. |
+| FR-3.3.1 | Clear Cart | Q1 | The cart service shall clear all cart contents within one request cycle. |
+| FR-4.1.1 | Place Order | Q1 | The checkout process shall create an order with at least one order item within one request cycle. |
+| FR-4.1.2 | Place Order | Q2 | The Checkout PageModel shall accept exactly one order per checkout submission by enforcing a unique idempotency key within the existing database transaction. |
+| FR-4.1.3 | Place Order | Q3 | The Checkout PageModel shall reject a duplicate checkout submission and return the existing order confirmation instead of creating a new order. |
+| FR-4.1.4 | Place Order | Q2 | The CartService shall persist cart contents keyed by user ID so the cart survives authentication session expiry during checkout. |
+| FR-4.1.5 | Place Order | Q3 | The application shall redirect an expired-session user to re-authentication while preserving the checkout return URL and the persisted cart. |
+| FR-4.1.6 | Place Order | Q2 | The Checkout PageModel shall not create or persist an order that contains zero order items. |
+| FR-4.1.7 | Place Order | Q3 | If checkout is submitted with an empty cart, the application shall abort checkout, display a "cart is empty" message, and return the user to the cart page without creating an order. |
+| FR-4.2.1 | Calculate Order Total | Q1 | The Checkout PageModel shall calculate the order total as the sum of each line item’s quantity multiplied by its unit-price snapshot within one request cycle. |
+| FR-4.2.2 | Calculate Order Total | Q2 | The Checkout PageModel shall not persist an order whose total amount differs from the sum of its line totals (quantity × unit-price snapshot). |
+| FR-4.2.3 | Calculate Order Total | Q3 | If a mismatch between the order total and the sum of line totals is detected during checkout, the application shall roll back the database transaction and not persist the order. |
+| FR-5.1.1 | View Order History | Q1 | The order history page shall display only the authenticated user’s orders within one request cycle. |
+| FR-5.1.2 | View Order History | Q2 | The order history page shall not return any order that does not belong to the authenticated user; all queries shall be filtered by the authenticated user’s ID. |
+| FR-5.1.3 | View Order History | Q3 | If an unauthenticated request reaches the order history page, the application shall challenge the request (redirect to sign-in) and return no order data. |
+| FR-5.2.1 | View Order Details | Q1 | The order details page shall display only the authenticated user’s order details within one request cycle. |
+| FR-5.2.2 | View Order Details | Q2 | The order details page shall not display an order whose owner is not the authenticated user; the query shall match both the order ID and the authenticated user’s ID. |
+| FR-5.2.3 | View Order Details | Q3 | If a requested order does not belong to the authenticated user or does not exist, the application shall return a Not Found response; an unauthenticated request shall be challenged. |
+| FR-6.1.1 | Build Application Container | Q1 | The Docker build shall produce a runnable application image within one build invocation. |
+| FR-6.2.1 | Run Application With Database | Q1 | The application shall start successfully with SQL Server in Docker within one container startup sequence. |
+| FR-6.2.2 | Run Application With Database | Q2 | The application shall not be considered started unless a valid SQL Server connection string is configured for the environment. |
+| FR-6.2.3 | Run Application With Database | Q3 | If the SQL Server database is unavailable at startup, the application shall surface a clear startup error in the logs rather than failing silently. Automatic startup retry or health-check is **To Be Completed**. |
 
 ---
 
@@ -365,25 +388,39 @@ The project provides a lightweight e-commerce web application that allows users 
 
 # 14. Requirements Traceability Matrix
 
-| Requirement ID | Level-2 Capability | Requirement Description |
-|---|---|---|
-| FR-1.1.1 | Register User | Register a user account within one submission. |
-| FR-1.2.1 | Authenticate User | Authenticate a registered user within two seconds. |
-| FR-2.1.1 | View Product Catalog | Display only non-archived products within two seconds. |
-| FR-2.2.1 | View Product Details | Display a valid product’s details within two seconds. |
-| FR-3.1.1 | Add Item To Cart | Add a new cart item or increase quantity within one request cycle. |
-| FR-3.2.1 | Remove Item From Cart | Remove the requested product from the cart within one request cycle. |
-| FR-3.3.1 | Clear Cart | Clear all cart contents within one request cycle. |
-| FR-4.1.1 | Place Order | Create an order with at least one order item within one request cycle. |
-| FR-4.1.2 | Place Order | Accept exactly one order per checkout submission via a unique idempotency key. |
-| FR-4.1.3 | Place Order | Reject a duplicate submission and return the existing order confirmation. |
-| FR-4.1.4 | Place Order | Persist cart contents keyed by user ID so the cart survives session expiry. |
-| FR-4.1.5 | Place Order | Redirect an expired-session user to re-authentication, preserving cart and return URL. |
-| FR-4.2.1 | Calculate Order Total | Calculate the order total as the sum of quantity times unit-price snapshot for each line item. |
-| FR-5.1.1 | View Order History | Display only the authenticated user’s orders within one request cycle. |
-| FR-5.2.1 | View Order Details | Display only the authenticated user’s order details within one request cycle. |
-| FR-6.1.1 | Build Application Container | Produce a runnable application image within one build invocation. |
-| FR-6.2.1 | Run Application With Database | Start the application successfully with SQL Server in Docker within one container startup sequence. |
+| Requirement ID | Level-2 Capability | Q-Type | Requirement Description |
+|---|---|---|---|
+| FR-1.1.1 | Register User | Q1 | Register a user account within one submission. |
+| FR-1.2.1 | Authenticate User | Q1 | Authenticate a registered user within two seconds. |
+| FR-1.2.2 | Authenticate User | Q2 | Deny access on invalid credentials or unconfirmed accounts without revealing whether an email is registered. |
+| FR-1.2.3 | Authenticate User | Q3 | Show a generic error and allow retry when authentication fails. |
+| FR-2.1.1 | View Product Catalog | Q1 | Display only non-archived products within two seconds. |
+| FR-2.2.1 | View Product Details | Q1 | Display a valid product’s details within two seconds. |
+| FR-3.1.1 | Add Item To Cart | Q1 | Add a new cart item or increase quantity within one request cycle. |
+| FR-3.1.2 | Add Item To Cart | Q2 | Increment the existing line instead of creating a duplicate cart line. |
+| FR-3.1.3 | Add Item To Cart | Q3 | Return an empty cart if the stored cart cannot be read. |
+| FR-3.2.1 | Remove Item From Cart | Q1 | Remove the requested product from the cart within one request cycle. |
+| FR-3.3.1 | Clear Cart | Q1 | Clear all cart contents within one request cycle. |
+| FR-4.1.1 | Place Order | Q1 | Create an order with at least one order item within one request cycle. |
+| FR-4.1.2 | Place Order | Q2 | Accept exactly one order per checkout submission via a unique idempotency key. |
+| FR-4.1.3 | Place Order | Q3 | Reject a duplicate submission and return the existing order confirmation. |
+| FR-4.1.4 | Place Order | Q2 | Persist cart contents keyed by user ID so the cart survives session expiry. |
+| FR-4.1.5 | Place Order | Q3 | Redirect an expired-session user to re-authentication, preserving cart and return URL. |
+| FR-4.1.6 | Place Order | Q2 | Never persist an order that contains zero order items. |
+| FR-4.1.7 | Place Order | Q3 | Abort checkout on an empty cart, show a message, and return to the cart page. |
+| FR-4.2.1 | Calculate Order Total | Q1 | Calculate the order total as the sum of quantity times unit-price snapshot for each line item. |
+| FR-4.2.2 | Calculate Order Total | Q2 | Never persist an order whose total differs from the sum of its line totals. |
+| FR-4.2.3 | Calculate Order Total | Q3 | Roll back the transaction and not persist the order if a total mismatch is detected. |
+| FR-5.1.1 | View Order History | Q1 | Display only the authenticated user’s orders within one request cycle. |
+| FR-5.1.2 | View Order History | Q2 | Filter all order-history queries by the authenticated user’s ID; never return other users’ orders. |
+| FR-5.1.3 | View Order History | Q3 | Challenge an unauthenticated request and return no order data. |
+| FR-5.2.1 | View Order Details | Q1 | Display only the authenticated user’s order details within one request cycle. |
+| FR-5.2.2 | View Order Details | Q2 | Match both order ID and the authenticated user’s ID; never display another user’s order. |
+| FR-5.2.3 | View Order Details | Q3 | Return Not Found for a foreign or missing order; challenge an unauthenticated request. |
+| FR-6.1.1 | Build Application Container | Q1 | Produce a runnable application image within one build invocation. |
+| FR-6.2.1 | Run Application With Database | Q1 | Start the application successfully with SQL Server in Docker within one container startup sequence. |
+| FR-6.2.2 | Run Application With Database | Q2 | Do not consider the application started without a valid SQL Server connection string. |
+| FR-6.2.3 | Run Application With Database | Q3 | Surface a clear startup error in the logs if the database is unavailable at startup. |
 
 ---
 
