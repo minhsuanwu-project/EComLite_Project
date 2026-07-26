@@ -64,7 +64,7 @@ namespace EComLite.Web.Pages.Cart
                 UserId = user.Id,
                 TotalAmount = Total,
                 Currency = "USD",
-                Status = "Placed",
+                Status = OrderStatus.Initial,
                 PlacedAt = placedAt
             };
 

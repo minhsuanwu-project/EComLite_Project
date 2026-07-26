@@ -13,7 +13,7 @@ namespace EComLite.Web.Models
 
         public string Currency { get; set; } = "USD";
 
-        public string Status { get; set; } = "Placed";
+        public string Status { get; set; } = OrderStatus.Initial;
 
         public DateTime PlacedAt { get; set; } = DateTime.UtcNow;
 
