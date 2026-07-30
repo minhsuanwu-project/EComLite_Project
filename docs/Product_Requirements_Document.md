@@ -12,14 +12,15 @@
 - **Current Branch:** master
 - **Current Commit SHA:** a965859a695db8a70e90b048e1615986a58845a7
 - **Current Release Version:** v1.0
-- **Document Version:** 0.3
-- **Last Updated:** 2026-07-24
+- **Document Version:** 0.4
+- **Last Updated:** 2026-07-30
 
 ## Revision History
 
 | Version | Date | Git Commit | Description | Author |
 |---|---|---|---|---|
 | 0.1 | 2026-07-24 | bef575f9aec487618cb371bccca76e905bab7664 | Initial PRD created from repository evidence for authentication, catalog, cart, checkout, orders, tests, Docker, and CI. | GitHub Copilot |
+| 0.4 | 2026-07-30 | (pending commit) | Marked UE-4.1-02 (idempotency) and UE-4.1-03 (DB-backed cart) as implemented and tested; updated Section 16 Open Issues to remove the two resolved items and to reflect that the order status lifecycle and its validation are implemented while the Admin dashboard UI remains planned. | Min Hsuan Wu |
 | 0.3 | 2026-07-24 | a965859a695db8a70e90b048e1615986a58845a7 | Added Q1/Q2/Q3 behavior classification to Section 8 and supplied Preventative (Q2) and Responsive (Q3) functional requirements for every high-priority undesirable event (Risk Score >= 8), grounded in repository evidence with remaining gaps marked To Be Completed; extended the Section 14 traceability matrix accordingly. | Min Hsuan Wu |
 | 0.2 | 2026-07-24 | bef575f9aec487618cb371bccca76e905bab7664 | Manual review corrections: fixed Section 6 risk-priority sort order; aligned Section 1 / Section 15 version plan with released tag `v1.0` and the Version 2 roadmap; added Checkout race-condition (UE-4.1-02) and mid-checkout session-expiry (UE-4.1-03) risks from the project Risk Register, with matching risk analysis, mitigation, functional requirements, and traceability; added Level-2 capability 4.2 Calculate Order Total with its undesirable event, risk, mitigation, functional requirement, and traceability; filled cover-page fields; added Idempotency Key and Order Status Lifecycle glossary terms. | Min Hsuan Wu |
 
@@ -453,10 +454,10 @@ Q2 and Q3 requirements are provided for the highest-priority undesirable events 
 # 16. Open Issues
 
 - The repository does not currently define explicit performance targets for concurrent users, peak throughput, or memory usage. **To Be Completed**.
-- Checkout does not yet enforce an idempotency key to prevent duplicate order submission (see UE-4.1-02 mitigation). **To Be Completed**.
-- The shopping cart is stored only in session and is not yet persisted to the database, so it does not survive session expiry (see UE-4.1-03 mitigation). **To Be Completed**.
 - Payment provider integration is not yet implemented and is planned as a future enhancement. **To Be Completed**.
-- A formal Admin Order Management workflow and order status lifecycle are not yet implemented and are planned for Version 2. **To Be Completed**.
+- The Admin Order Management dashboard UI is not yet implemented. The order status lifecycle (Pending → Processing → Shipped → Delivered) and its server-side transition validation are implemented and tested (`OrderStatusService`), but the admin-facing pages and role-restricted routes remain planned for Version 2. **To Be Completed**.
+
+> Resolved since v0.3: checkout now enforces a unique idempotency key to prevent duplicate order submission (UE-4.1-02, `CheckoutService`), and the cart is now persisted to the database keyed by user ID so it survives session expiry (UE-4.1-03, `PersistentCartService`). Both are covered by automated tests.
 
 ---
 
