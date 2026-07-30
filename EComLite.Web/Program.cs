@@ -37,6 +37,8 @@ builder.Services.AddSession(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<CartService>();
 builder.Services.AddScoped<OrderStatusService>();
+builder.Services.AddScoped<CheckoutService>();
+builder.Services.AddScoped<PersistentCartService>();
 
 var app = builder.Build();
 
