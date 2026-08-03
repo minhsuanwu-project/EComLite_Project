@@ -10,12 +10,12 @@
 - Semester: Summer 2026
 - Repository URL: https://github.com/minhsuanwu-project/EComLite_Project
 - Current branch: master
-- Current commit SHA: b482203 (working tree also contains the pending idempotency, persistent-cart, and access-control changes)
-- Current release/tag: v1.0
-- Document version: 0.2
+- Current commit SHA: c214408411affe72acb0a39f3b3b1f319e683a79
+- Current release/tag: v2.0
+- Document version: 0.3
 - Document status: Draft / Living Verification Report
-- Last updated date: 2026-07-30
-- Test period covered: 2026-07-24 to 2026-07-30
+- Last updated date: 2026-08-02
+- Test period covered: 2026-07-24 to 2026-08-02
 - Primary test framework(s): xUnit, Moq, EF Core InMemory
 - CI/CD workflow status: Configured in [.github/workflows/ci.yml](../.github/workflows/ci.yml) to run `dotnet test` on push and pull_request. The workflow previously reported success without executing tests before the test project was included in the solution; that issue has since been corrected.
 
@@ -23,8 +23,9 @@
 
 | Document Version | Date | Git Commit | Sections Updated | Change Description | Author/Reviewer |
 |---|---|---|---|---|---|
+| 0.3 | 2026-08-02 | c214408 | Cover, 1, 4, 5, 7, 10, 11, 12, 15, 16, 17, 18, 19, 20, 21, 22 | Version 2 completed and tagged v2.0: added the Admin Order Management dashboard with role-restricted access and status-lifecycle actions, and AdminOrdersTests (9 tests). Suite grew from 46 to 55 tests, still 0 failures. Marked the admin-route authorization requirement and the customer-visible status indicator as verified; corrected the customer status badge mapping to the Pending/Processing/Shipped/Delivered lifecycle. Recomputed coverage and linked new execution evidence. | Min Hsuan Wu |
+| 0.2 | 2026-07-30 | 8542f9f | 1, 4, 5, 6, 7, 8, 10, 11, 12, 15, 16, 17, 19, 20, 22 | Marked UE-4.1-02 (idempotency) and UE-4.1-03 (persistent cart) as implemented and tested; added AccessControlTests, CheckoutServiceTests, PersistentCartServiceTests; recomputed real coverage figures; replaced fabricated Risk-NN identifiers with UE identifiers; added FR-1.1.1 to the traceability matrix; completed the risk-mitigation matrix for all 15 undesirable events; linked a real `dotnet test` execution-evidence file. | Min Hsuan Wu |
 | 0.1 | 2026-07-29 | (pending) | All sections | Initial creation from repository evidence, PRD requirements, implementation files, and current automated tests. | GitHub Copilot |
-| 0.2 | 2026-07-30 | (pending) | 1, 4, 5, 6, 7, 8, 10, 11, 12, 15, 16, 17, 19, 20, 22 | Marked UE-4.1-02 (idempotency) and UE-4.1-03 (persistent cart) as implemented and tested; added AccessControlTests, CheckoutServiceTests, PersistentCartServiceTests; recomputed real coverage figures; replaced fabricated Risk-NN identifiers with UE identifiers; added FR-1.1.1 to the traceability matrix; completed the risk-mitigation matrix for all 15 undesirable events; linked a real `dotnet test` execution-evidence file. | Min Hsuan Wu |
 
 ## Table of Contents
 
@@ -64,21 +65,20 @@ This document is the living verification artifact for EComLite. It records the r
 ## 1.2 Software Under Test
 
 - System/product name: EComLite
-- Release/version: v1.0 (plus in-progress Version 2 work on order status, idempotency, and persistent cart)
+- Release/version: v2.0 (Version 2 complete: admin order management, order status lifecycle, role-based access control, idempotent checkout, persistent cart)
 - Branch: master
-- Major components: ASP.NET Core 8 Razor Pages web app, EF Core data layer, ASP.NET Core Identity (with roles), session-backed cart, database-backed persistent cart, idempotent checkout/order persistence, order-status lifecycle validation, Docker deployment, GitHub Actions CI.
-- Major Level-2 capabilities covered by tests: 2.1 View Product Catalog, 2.2 View Product Details, 3.1 Add Item To Cart, 3.2 Remove Item From Cart, 3.3 Clear Cart, 4.1 Place Order, 4.2 Calculate Order Total, 5.1 View Order History, 5.2 View Order Details.
+- Major components: ASP.NET Core 8 Razor Pages web app, EF Core data layer, ASP.NET Core Identity (with roles), session-backed cart, database-backed persistent cart, idempotent checkout/order persistence, order-status lifecycle validation, role-restricted Admin Order Management dashboard, Docker deployment, GitHub Actions CI.
+- Major Level-2 capabilities covered by tests: 2.1 View Product Catalog, 2.2 View Product Details, 3.1 Add Item To Cart, 3.2 Remove Item From Cart, 3.3 Clear Cart, 4.1 Place Order, 4.2 Calculate Order Total, 5.1 View Order History, 5.2 View Order Details, plus the Version 2 admin order management and status lifecycle.
 - Deployment form: Web application containerized with Docker; local development also supports .NET and SQL Server.
 - Known external dependencies: SQL Server, ASP.NET Core Identity, EF Core, Docker Compose, GitHub Actions.
 
 ## 1.3 Test Scope
 
-The current effort covers cart behavior, checkout persistence, idempotent duplicate-checkout handling, database-backed cart persistence, order-total calculation, order numbering, order-status transition validation, product-detail access control, and order-detail user scoping. It does not yet include browser end-to-end testing, authentication flow testing, admin dashboard testing, or performance/load testing.
+The current effort covers cart behavior, checkout persistence, idempotent duplicate-checkout handling, database-backed cart persistence, order-total calculation, order numbering, order-status transition validation, product-detail access control, order-detail user scoping, and the Admin Order Management dashboard's role restriction and status-advance actions. It does not yet include browser end-to-end testing, authentication flow testing, or performance/load testing.
 
 ## 1.4 Out-of-Scope Items
 
-- Admin Order Management dashboard UI and role-restricted admin routes (Version 2, backend not yet exposed through pages).
-- End-to-end browser automation.
+- End-to-end browser automation (the admin dashboard's authorization is verified at the attribute and service level, not through a live HTTP 403 response).
 - Performance and load testing.
 - Production payment, inventory, and fulfillment integrations.
 
@@ -171,7 +171,7 @@ The PRD identifies checkout and authentication risks as highest priority. Testin
 | 2 | UE-4.1-02 | 12 | Unique idempotency key; duplicate-submission prevention | FR-4.1.2, FR-4.1.3 | Implemented and Passed (CheckoutServiceTests) |
 | 3 | UE-4.1-03 | 12 | DB-backed cart keyed by user ID | FR-4.1.4, FR-4.1.5 | Persistence Passed (PersistentCartServiceTests); re-auth redirect Planned |
 | 4 | UE-5.1-01 | 10 | User-scoped order history queries | FR-5.1.1, FR-5.1.2 | Implemented and Passed (CheckoutTests) |
-| 5 | UE-5.2-01 | 10 | User-scoped order detail access | FR-5.2.1, FR-5.2.2, FR-5.2.3 | Data-scoping Passed (AccessControlTests); unauthenticated-challenge Planned |
+| 5 | UE-5.2-01 | 10 | User-scoped order detail access; admin routes restricted by role | FR-5.2.1, FR-5.2.2, FR-5.2.3 | Data-scoping Passed (AccessControlTests); admin role restriction Passed (AdminOrdersTests); unauthenticated-challenge Planned |
 | 6 | UE-3.1-01 | 9 | Merge duplicate cart lines by product | FR-3.1.1, FR-3.1.2 | Implemented and Passed (CartServiceTests) |
 | 7 | UE-4.1-01 | 8 | Require at least one order item | FR-4.1.1, FR-4.1.6 | Implemented and Passed (CheckoutTests) |
 | 8 | UE-4.2-01 | 8 | Total from unit-price snapshots | FR-4.2.1 | Positive case Passed (CheckoutTests); mismatch rejection Planned |
@@ -203,7 +203,7 @@ Order-status transitions are verified by OrderStatusTransitionTests (valid forwa
 
 ## 4.8 Regression Testing
 
-The full automated suite (46 tests) serves as the regression suite for catalog, cart, checkout, idempotency, persistent cart, order number, order status, and user-scoping behavior.
+The full automated suite (55 tests) serves as the regression suite for catalog, cart, checkout, idempotency, persistent cart, order number, order status, user scoping, and admin role restriction.
 
 ## 4.9 Test Independence and Repeatability
 
@@ -215,7 +215,7 @@ Tests are isolated: unit tests use mocked sessions or pure inputs; integration t
 
 ## 5.1 Unit Testing
 
-Execution evidence: [docs/test-evidence/2026-07-30-dotnet-test.md](test-evidence/2026-07-30-dotnet-test.md) (46 passed, 0 failed).
+Execution evidence: [docs/test-evidence/2026-08-02-dotnet-test.md](test-evidence/2026-08-02-dotnet-test.md) (55 passed, 0 failed at v2.0). Previous run: [2026-07-30](test-evidence/2026-07-30-dotnet-test.md) (46 passed).
 
 | Unit Test Group | Component | Requirement IDs | Test File | Count | Status |
 |---|---|---|---|---:|---|
@@ -231,10 +231,11 @@ Execution evidence: [docs/test-evidence/2026-07-30-dotnet-test.md](test-evidence
 | CheckoutServiceTests | Idempotent order creation | FR-4.1.2, FR-4.1.3 | [CheckoutServiceTests.cs](../EComLite.Tests/CheckoutServiceTests.cs) | 3 | Passed |
 | PersistentCartServiceTests | DB-backed cart persistence | FR-4.1.4 | [PersistentCartServiceTests.cs](../EComLite.Tests/PersistentCartServiceTests.cs) | 4 | Passed |
 | AccessControlTests | Product-detail access; order-detail user scoping | FR-2.2.1, FR-5.2.1, FR-5.2.2, FR-5.2.3 | [AccessControlTests.cs](../EComLite.Tests/AccessControlTests.cs) | 5 | Passed |
+| AdminOrdersTests | Admin dashboard role restriction; status-advance via OrderStatusService | Version 2 admin/status (risk-control; UE-5.2-01 admin routes) | [AdminOrdersTests.cs](../EComLite.Tests/AdminOrdersTests.cs) | 9 | Passed |
 
 ## 5.3 System Testing
 
-Browser/UI end-to-end tests for the authentication flow, admin routes, and Docker startup are **Planned / Not Run**. No end-to-end automation exists yet.
+Browser/UI end-to-end tests for the authentication flow and Docker startup are **Planned / Not Run**. The admin dashboard's role restriction is verified at the attribute level (the `[Authorize(Roles = "Admin")]` contract) and its status actions are verified through `OrderStatusService`, but a live HTTP 403 response for a signed-in non-admin user has not been exercised, so that specific check remains **Planned**.
 
 ## 5.4 Acceptance Testing
 
@@ -242,7 +243,7 @@ Not yet defined. **Planned / To Be Completed**.
 
 ## 5.5 Regression Testing
 
-The 46-test automated suite is the regression suite and runs in CI on push and pull_request.
+The 55-test automated suite is the regression suite and runs in CI on push and pull_request.
 
 ---
 
@@ -458,6 +459,28 @@ No nondeterministic failures recorded. The duplicate-submission race is now guar
 |---:|---|---|---|---|---|
 | 1 | Validate each transition case | Allowed/rejected per lifecycle rules | Matches | Passed | [OrderStatusTransitionTests.cs](../EComLite.Tests/OrderStatusTransitionTests.cs) |
 
+## TC-ADMIN-01 – Admin dashboard is role-restricted and advances status safely
+
+| Field | Value |
+|---|---|
+| Test Case ID | TC-ADMIN-01 |
+| Test Level | Integration |
+| Level-2 Capability | Version 2 Admin Order Management |
+| Requirement ID(s) | Version 2 scope (proposal 2.6); supports UE-5.2-01 admin routes |
+| Related UE | UE-5.2-01 (Risk Score 10); risk-register R3 and R4 |
+| Objective | The admin page requires the Admin role, and a status change is applied only when it is a legal one-step transition. |
+| Environment | EF Core InMemory; attribute reflection for the authorization contract |
+| Execution Status | Passed |
+
+### Test Procedure
+| Step | Action | Expected Result | Actual Result | Step Status | Evidence |
+|---:|---|---|---|---|---|
+| 1 | Inspect the admin page model's authorization attribute | `[Authorize]` present, `Roles = "Admin"` | Present, Roles = Admin | Passed | [AdminOrdersTests.cs](../EComLite.Tests/AdminOrdersTests.cs) |
+| 2 | Advance a Pending order one step | Status becomes Processing | Processing | Passed | [AdminOrdersTests.cs](../EComLite.Tests/AdminOrdersTests.cs) |
+| 3 | Attempt Pending to Delivered (skips two stages) | Rejected; stored status still Pending | Rejected; unchanged | Passed | [AdminOrdersTests.cs](../EComLite.Tests/AdminOrdersTests.cs) |
+| 4 | Request a status change on a non-existent order | Failure result returned | Failed as expected | Passed | [AdminOrdersTests.cs](../EComLite.Tests/AdminOrdersTests.cs) |
+| 5 | Check the next step offered for each status | Exactly one legal next step; none for Delivered | Matches lifecycle | Passed | [AdminOrdersTests.cs](../EComLite.Tests/AdminOrdersTests.cs) |
+
 ## TC-IDEMPOTENCY-SYS-01 – End-to-end duplicate submission through the page (Planned)
 
 | Field | Value |
@@ -487,7 +510,7 @@ No nondeterministic failures recorded. The duplicate-submission race is now guar
 ## Reliability
 | Quality Requirement ID | Verification Method | Measurement | Acceptance Criterion | Result | Status |
 |---|---|---|---|---|---|
-| QR-01 | Automated suite | 46 tests, 0 failures | Core flows stable | 46/46 passed | Passed |
+| QR-01 | Automated suite | 55 tests, 0 failures | Core flows stable | 55/55 passed | Passed |
 
 ## Security
 | Quality Requirement ID | Verification Method | Measurement | Acceptance Criterion | Result | Status |
@@ -531,10 +554,11 @@ No dedicated performance harness exists. PRD performance targets remain unverifi
 
 ## 10.2 CI Execution Evidence
 
-Local execution is captured in [docs/test-evidence/2026-07-30-dotnet-test.md](test-evidence/2026-07-30-dotnet-test.md) (46 passed, 0 failed, .NET 8.0.200).
+Local execution is captured in [docs/test-evidence/2026-08-02-dotnet-test.md](test-evidence/2026-08-02-dotnet-test.md) (55 passed, 0 failed, .NET 8.0.200, commit c214408).
 
 | Run Date | Branch/PR | Workflow | Tests Run | Result | Evidence |
 |---|---|---|---:|---|---|
+| 2026-08-02 | master @ v2.0 (local) | dotnet test | 55 | 55 passed / 0 failed | [test-evidence/2026-08-02-dotnet-test.md](test-evidence/2026-08-02-dotnet-test.md) |
 | 2026-07-30 | master (local) | dotnet test | 46 | 46 passed / 0 failed | [test-evidence/2026-07-30-dotnet-test.md](test-evidence/2026-07-30-dotnet-test.md) |
 | To Be Completed | CI run | GitHub Actions | To Be Completed | To Be Completed | Link the GitHub Actions run URL |
 
@@ -549,18 +573,18 @@ Prior finding: the workflow reported success without running tests because the t
 | Test Level | Planned | Implemented | Executed | Passed | Failed | Blocked | Deferred |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | Unit | 27 | 27 | 27 | 27 | 0 | 0 | 0 |
-| Integration | 19 | 19 | 19 | 19 | 0 | 0 | 0 |
-| System | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
+| Integration | 28 | 28 | 28 | 28 | 0 | 0 | 0 |
+| System | 3 | 0 | 0 | 0 | 0 | 0 | 3 |
 | Acceptance | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | Performance | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
 | Property-Based | 2 | 0 | 0 | 0 | 0 | 0 | 2 |
-| Regression | 46 | 46 | 46 | 46 | 0 | 0 | 0 |
+| Regression | 55 | 55 | 55 | 55 | 0 | 0 | 0 |
 
-- Overall pass rate: 46/46 executed tests passed.
+- Overall pass rate: 55/55 executed tests passed.
 - Unresolved critical defects: None.
-- Unresolved high-risk requirements: FR-1.2.1/1.2.2/1.2.3 (authentication) have no automated tests; FR-4.1.5 (re-auth redirect) and FR-4.2.2/4.2.3 (total-mismatch rejection) are not yet implemented/tested.
+- Unresolved high-risk requirements: FR-1.2.1/1.2.2/1.2.3 (authentication) have no automated tests; FR-4.1.5 (re-auth redirect) and FR-4.2.2/4.2.3 (total-mismatch rejection) are not yet implemented/tested; a live HTTP 403 check on admin routes remains Planned.
 - Release recommendation: Ready with Known Limitations.
-- Test completion date: 2026-07-30.
+- Test completion date: 2026-08-02 (release v2.0).
 
 ---
 
@@ -568,7 +592,9 @@ Prior finding: the workflow reported success without running tests because the t
 
 | Evidence ID | Test Case ID(s) | Evidence Type | Location |
 |---|---|---|---|
-| EV-00 | All | Execution log (46 passed) | [test-evidence/2026-07-30-dotnet-test.md](test-evidence/2026-07-30-dotnet-test.md) |
+| EV-00 | All | Execution log at v2.0 (55 passed) | [test-evidence/2026-08-02-dotnet-test.md](test-evidence/2026-08-02-dotnet-test.md) |
+| EV-00b | All | Previous execution log (46 passed) | [test-evidence/2026-07-30-dotnet-test.md](test-evidence/2026-07-30-dotnet-test.md) |
+| EV-09 | TC-ADMIN-01 | Test source | [AdminOrdersTests.cs](../EComLite.Tests/AdminOrdersTests.cs) |
 | EV-01 | TC-3.1-01 | Test source | [CartServiceTests.cs](../EComLite.Tests/CartServiceTests.cs) |
 | EV-02 | TC-4.1-01, TC-4.2-01, TC-5.1-01 | Test source | [CheckoutTests.cs](../EComLite.Tests/CheckoutTests.cs) |
 | EV-03 | TC-ORD-01 | Test source | [OrderNumberTests.cs](../EComLite.Tests/OrderNumberTests.cs) |
@@ -586,7 +612,7 @@ Prior finding: the workflow reported success without running tests because the t
 |---|---|---|---|---|---|---|---|---|
 | D-01 | 2026-07-28 | CI workflow | N/A | CI reported success without running tests because the test project was absent from the solution. | High | Closed | Test project registered in `EComLite.sln`; CI now runs `dotnet test` | Whole suite runs in CI |
 
-No test failures are recorded in the current suite (46 passed, 0 failed).
+No test failures are recorded in the current suite (55 passed, 0 failed).
 
 ---
 
@@ -637,7 +663,7 @@ No test failures are recorded in the current suite (46 passed, 0 failed).
 | FR-6.2.2 | Run Application With Database | Require a valid connection string | UE-6.2-01 | (none) | Planned |
 | FR-6.2.3 | Run Application With Database | Surface a clear startup error | UE-6.2-01 | (none) | Planned |
 
-Traceability notes: 17 of 31 functional requirements are verified by passing tests; the remaining 14 are Planned. TC-STATUS-01 is a risk-control test for the Version 2 order status lifecycle and does not map to a single approved PRD functional requirement.
+Traceability notes: 17 of 31 functional requirements are verified by passing tests; the remaining 14 are Planned. TC-STATUS-01 and TC-ADMIN-01 are risk-control tests for the Version 2 order status lifecycle and Admin Order Management dashboard. They verify scope defined in Section 2.6 of the Project Proposal and the risk register (R3, R4) rather than a single approved PRD functional requirement, which is why they are justified here as risk-control testing rather than treated as untraced tests.
 
 ---
 
@@ -649,7 +675,7 @@ Traceability notes: 17 of 31 functional requirements are verified by passing tes
 | UE-4.1-02 | 12 | Unique idempotency key; duplicate prevention | Pure Software | `CheckoutService`, `Order.IdempotencyKey` filtered unique index | TC-4.1-02 | Passed |
 | UE-4.1-03 | 12 | Persist cart by user ID | Pure Software | `PersistentCartService`, `PersistedCart` table | TC-4.1-03 | Passed |
 | UE-5.1-01 | 10 | User-scoped order history queries | Pure Software | `Orders/Index` UserId filter | TC-5.1-01 | Passed |
-| UE-5.2-01 | 10 | User-scoped order detail access | Pure Software | `Orders/Details` OrderId+UserId filter, NotFound, Challenge | TC-5.2-01 | Passed |
+| UE-5.2-01 | 10 | User-scoped order detail access; admin routes gated by role | Pure Software | `Orders/Details` OrderId+UserId filter, NotFound, Challenge; `Pages/Admin/Orders` guarded by `[Authorize(Roles = "Admin")]` | TC-5.2-01, TC-ADMIN-01 | Passed |
 | UE-3.1-01 | 9 | Merge duplicate cart lines by product | Pure Software | `CartService.AddItem` | TC-3.1-01 | Passed |
 | UE-4.1-01 | 8 | Require >= 1 order item | Pure Software | Checkout empty-cart guard | TC-4.1-01 | Passed |
 | UE-4.2-01 | 8 | Total from unit-price snapshots | Pure Software | Order total computed from snapshots | TC-4.2-01 | Passed (positive) |
@@ -669,6 +695,7 @@ Traceability notes: 17 of 31 functional requirements are verified by passing tes
 |---|---:|---:|---:|---|---|
 | Requirements coverage | 17 | 31 | 55% | Section 15 traceability | Authentication, empty-cart response, total-mismatch, re-auth redirect, and deployment requirements remain untested |
 | Level-2 capability coverage | 9 | 13 | 69% | Section 15 + tests | Register User, Authenticate User, Build Container, Run With Database not covered |
+| Version 2 scope coverage | 5 | 5 | 100% | Proposal Section 2.6 vs. implementation and tests | Status lifecycle, transition validation, admin dashboard, role gating, and customer-visible status are all delivered and tested |
 | Risk coverage | 11 | 15 | 73% | Section 16 | UE-1.1-01, UE-1.2-01, UE-6.1-01, UE-6.2-01 not verified |
 | Mitigation coverage | 11 | 15 | 73% | Section 16 | Same four mitigations not verified |
 | Code coverage | To Be Completed | To Be Completed | To Be Completed | coverlet.collector installed but not yet run | Run `dotnet test --collect:"XPlat Code Coverage"` |
@@ -684,6 +711,7 @@ Code coverage is supplementary; high code coverage alone does not demonstrate re
 | CheckoutService | Extracted idempotent order creation into a service | High-risk duplicate-submission behavior is now unit/integration testable | Done | Deterministic regression tests (TC-4.1-02) |
 | PersistentCartService | Cart persistence isolated behind a service | Session-expiry survival is now testable without a browser | Done | TC-4.1-03 |
 | OrderStatusService | Pure static validation method | State-machine rules testable in isolation | Done | TC-STATUS-01 |
+| Admin dashboard | Authorization expressed as an attribute on the page model | The role restriction can be asserted by reflection without a running server, but a live 403 still needs an HTTP harness | Done (attribute-level test); Planned: WebApplicationFactory test for the 403 | Fast regression guard against an accidentally removed role check |
 | Order number generation | GUID suffix used directly | Format tested, but GUID-driven uniqueness not semantically tested | Planned: deterministic suffix strategy | Improved reproducibility |
 | Authentication flow | Requires browser/Identity harness | Sign-in behavior not automated | Planned: integration harness with mocked Identity | Coverage of UE-1.2-01 |
 
@@ -691,19 +719,20 @@ Code coverage is supplementary; high code coverage alone does not demonstrate re
 
 # 19. Release Readiness Assessment
 
-- Tested branch: master (working tree with pending Version 2 changes)
-- Release/tag: v1.0
-- Total executed tests: 46
+- Tested branch: master
+- Tested commit SHA: c214408411affe72acb0a39f3b3b1f319e683a79
+- Release/tag: v2.0
+- Total executed tests: 55
 - Failures: 0
 - Blocked tests: 0
 - Unresolved defects: None (D-01 closed)
 - Unmet/untested requirements: authentication (FR-1.2.x), empty-cart response (FR-4.1.7), total-mismatch rejection (FR-4.2.2/4.2.3), re-auth redirect (FR-4.1.5), deployment (FR-6.x)
 - CI status: Configured and executing; a preserved run link is To Be Completed
-- Known limitations: no browser automation, no performance harness, no admin dashboard UI
+- Known limitations: no browser automation, no performance harness, no live HTTP 403 check on admin routes
 
 Recommendation: **Ready with Known Limitations.**
 
-Justification: The suite verifies catalog, cart, checkout, idempotency, persistent cart, totals, order numbering, order-status validation, and user scoping (46/46 passing). The remaining gaps are authentication flow tests, deployment tests, and browser-level end-to-end tests, all documented as Planned.
+Justification: Version 2 scope is complete and tagged v2.0. The suite verifies catalog, cart, checkout, idempotency, persistent cart, totals, order numbering, order-status validation, user scoping, and admin role restriction (55/55 passing). The remaining gaps are authentication flow tests, deployment tests, and browser-level end-to-end tests, all documented as Planned rather than reported as verified.
 
 ---
 
@@ -718,7 +747,7 @@ Justification: The suite verifies catalog, cart, checkout, idempotency, persiste
 | No browser end-to-end tests | User-visible workflows partly unverified | Add UI automation for checkout and auth |
 | No performance tests | Response-time requirements unverified | Add benchmarks with a defined workload |
 | Code coverage not measured | Coverage unknown | Run coverlet and record the report |
-| Admin dashboard UI absent | Admin route authorization unverified | Implement Version 2 admin pages and tests |
+| Admin route 403 not exercised over HTTP | The role attribute is asserted, but a real non-admin request has not been rejected end to end | Add a WebApplicationFactory integration test asserting HTTP 403 |
 
 ---
 
@@ -728,6 +757,8 @@ Justification: The suite verifies catalog, cart, checkout, idempotency, persiste
 - The PRD risk analysis correctly prioritized duplicate submission and session expiry as the highest risks; both are now implemented and covered by tests (TC-4.1-02, TC-4.1-03).
 - Extracting `CheckoutService` and `PersistentCartService` from the page model made the high-risk behaviors testable without a browser, confirming that testability improvements come from isolating logic behind services.
 - EF Core InMemory does not enforce unique indexes or support real transactions, so the idempotency test verifies the check-existing path while the database unique index remains the concurrency backstop, verified only against real SQL Server.
+- Writing the admin dashboard exposed dead code: `OrderStatusService` and its 13 tests had existed since Version 2 began, but nothing in the application ever called `ChangeStatusAsync`. Passing unit tests said the state machine worked, yet no user could reach it. Verification has to cover whether a mitigation is actually wired into a user-reachable path, not only whether the logic is correct in isolation.
+- The customer order page mapped only "shipped" and "cancelled" to badge styles, so Pending, Processing, and Delivered all rendered identically and "cancelled" no longer existed in the lifecycle. Introducing a new state machine means auditing every place the old status vocabulary was consumed.
 
 ---
 
@@ -737,9 +768,11 @@ Justification: The suite verifies catalog, cart, checkout, idempotency, persiste
 |---|---|---|---|---|
 | 1 | Automated authentication (sign-in) tests | FR-1.2.x, UE-1.2-01 | v2.0 | Planned |
 | 2 | Total-consistency check + tests | FR-4.2.2, FR-4.2.3, UE-4.2-01 | v2.0 | Planned |
-| 3 | Admin dashboard UI + role authorization tests | UE-5.2-01, admin routes | v2.0 | Planned |
-| 4 | Browser end-to-end tests (checkout, auth, re-auth cart restore) | FR-4.1.5, FR-4.1.7 | v2.0 | Planned |
-| 5 | Record code coverage and a CI run link | Coverage, CI evidence | v2.0 | Planned |
+| 3 | HTTP-level 403 test for admin routes (WebApplicationFactory) | UE-5.2-01, risk R3 | v2.1 | Planned |
+| 4 | Browser end-to-end tests (checkout, auth, re-auth cart restore) | FR-4.1.5, FR-4.1.7 | v2.1 | Planned |
+| 5 | Record code coverage and a CI run link | Coverage, CI evidence | v2.1 | Planned |
+| 6 | Gate role/data seeding to non-production environments | Risk R5 residual | v2.1 | Planned |
+| 7 | Fail the CI run when zero tests are executed | Risk R6 residual | v2.1 | Planned |
 
 ---
 
@@ -773,6 +806,7 @@ Justification: The suite verifies catalog, cart, checkout, idempotency, persiste
 
 ## Appendix D – Execution Evidence
 
+- [docs/test-evidence/2026-08-02-dotnet-test.md](test-evidence/2026-08-02-dotnet-test.md) - full list of the 55 tests at v2.0 and their outcomes.
 - [docs/test-evidence/2026-07-30-dotnet-test.md](test-evidence/2026-07-30-dotnet-test.md) — full list of the 46 tests and their outcomes.
 
 ## Appendix E – Deferred Tests
