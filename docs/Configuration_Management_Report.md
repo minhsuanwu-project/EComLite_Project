@@ -12,8 +12,16 @@
 | Repository | https://github.com/minhsuanwu-project/EComLite_Project |
 | Version control system | Git / GitHub (public; instructor has read access) |
 | Current release tag | v1.0 |
+| Additional Git tag | v2.0 (present in Git refs; published Release evidence not found in repository docs) |
 | Total commits | 23 |
 | Report date | 2026-08-02 |
+
+## Document Revision History
+
+| Version | Date | Summary of Changes |
+|---|---|---|
+| 1.0 | 2026-08-02 | Initial CM report content maintained from repository artifacts. |
+| 1.1 | 2026-08-04 | Updated report to reflect actual Git tag state, CI workflow evidence, and repository artifacts. |
 
 ---
 
@@ -147,10 +155,12 @@ A release is tagged only after the version is complete and its tests pass.
 The tag is published as a GitHub Release:
 https://github.com/minhsuanwu-project/EComLite_Project/releases/tag/v1.0
 
-`v2.0` is intentionally **not** tagged yet. Version 2 is partially delivered (order status
-lifecycle, transition validation, role seeding, idempotent checkout, persistent cart), but
-the Admin Order Management dashboard is still outstanding, so the version is not complete
-and must not be baselined as a release.
+A second Git tag, `v2.0`, is present in the repository refs. The repository documentation
+does not provide evidence that `v2.0` is published as a formal GitHub Release, so its status
+as a completed, baselined release is not confirmed from the available repository artifacts.
+Version 2 work is partially delivered (order status lifecycle, transition validation, role
+seeding, idempotent checkout, persistent cart), but the Admin Order Management dashboard is
+still outstanding and should be verified before treating the tag as a completed release.
 
 ---
 
