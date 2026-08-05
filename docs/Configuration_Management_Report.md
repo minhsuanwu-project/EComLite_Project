@@ -11,10 +11,10 @@
 | Semester | Summer 2026 |
 | Repository | https://github.com/minhsuanwu-project/EComLite_Project |
 | Version control system | Git / GitHub (public; instructor has read access) |
-| Current release tag | v1.0 |
-| Additional Git tag | v2.0 (present in Git refs; published Release evidence not found in repository docs) |
-| Total commits | 23 |
-| Report date | 2026-08-02 |
+| Current release tag | v2.0 (`c214408`) |
+| Previous release tag | v1.0 (`61cd86a`) |
+| Total commits on master | 27 |
+| Report date | 2026-08-04 |
 
 ## Document Revision History
 
@@ -22,6 +22,7 @@
 |---|---|---|
 | 1.0 | 2026-08-02 | Initial CM report content maintained from repository artifacts. |
 | 1.1 | 2026-08-04 | Updated report to reflect actual Git tag state, CI workflow evidence, and repository artifacts. |
+| 1.2 | 2026-08-04 | Corrected v1.1: `v2.0` is a completed, published release, and the Admin Order Management dashboard is implemented and merged (PR #6, `c214408`) rather than outstanding. Updated the current release tag to v2.0, the commit count to 27, and the automated test count to 55. |
 
 ---
 
@@ -74,7 +75,11 @@ Branches created during the project:
 | `feature/cm-exercise-demo` | Configuration management exercise demonstration |
 | `feature/v2-order-status` | Role seeding, order status lifecycle, transition validation |
 | `feature/v2-idempotency-cart` | Idempotent checkout, DB-backed persistent cart, access-control tests |
+| `feature/v2-admin-dashboard` | Admin Order Management dashboard, role-gated access, status actions |
 | `docs/risk-register-w4` | Risk register update (Week 4 re-scoring) |
+| `docs/cm-report` | Configuration management report |
+| `docs/test-plan-v2` | Test plan update for release v2.0 |
+| `docs/cm-report-review` | CM report review against repository evidence (this revision) |
 
 ---
 
@@ -108,6 +113,8 @@ Every change to the baseline is traceable to a pull request:
 | [#2](https://github.com/minhsuanwu-project/EComLite_Project/pull/2) | 2026-07-25 | `feature/v2-order-status` | Role seeding, order status lifecycle, server-side transition validation | feat |
 | [#3](https://github.com/minhsuanwu-project/EComLite_Project/pull/3) | 2026-07-29 | `feature/v2-idempotency-cart` | Idempotent checkout, DB-backed persistent cart, access-control tests, PRD and test-plan updates | feat |
 | [#4](https://github.com/minhsuanwu-project/EComLite_Project/pull/4) | 2026-08-02 | `docs/risk-register-w4` | Risk register re-scoring (R1, R2, R5) and Week 4 log entries | docs |
+| [#5](https://github.com/minhsuanwu-project/EComLite_Project/pull/5) | 2026-08-02 | `docs/cm-report` | Configuration management report | docs |
+| [#6](https://github.com/minhsuanwu-project/EComLite_Project/pull/6) | 2026-08-02 | `feature/v2-admin-dashboard` | Admin Order Management dashboard with role-gated access and status lifecycle actions; completed Version 2 | feat |
 
 ### 4.2 Baseline history
 
@@ -115,6 +122,14 @@ The merge structure below is taken directly from `git log --graph --oneline`, sh
 feature work is developed on branches and integrated into `master` through merge commits:
 
 ```
+*   c214408 (tag: v2.0) Merge pull request #6 from minhsuanwu-project/feature/v2-admin-dashboard
+|\
+| * 7e91524 [feat] add admin order dashboard with role-gated access and status lifecycle actions
+|/
+*   993d062 Merge pull request #5 from minhsuanwu-project/docs/cm-report
+|\
+| * f8dae0b [docs] add configuration management report
+|/
 *   b08daf3 Merge pull request #4 from minhsuanwu-project/docs/risk-register-w4
 |\
 | * 0c46451 [docs] update risk register: R1/R2 mitigated, R5 partial, add W4 weekly log
@@ -151,16 +166,25 @@ A release is tagged only after the version is complete and its tests pass.
 | Tag | Commit | Date | Contents |
 |---|---|---|---|
 | `v1.0` | `61cd86a` | 2026-07-13 | Version 1: core shopping flow — user authentication, product catalog, session cart, transactional checkout, order history — plus the CI workflow that verifies it |
+| `v2.0` | `c214408` | 2026-08-02 | Version 2: Admin Order Management dashboard, order status lifecycle with server-side transition validation, role-based access control, idempotent checkout, and database-backed persistent cart |
 
-The tag is published as a GitHub Release:
-https://github.com/minhsuanwu-project/EComLite_Project/releases/tag/v1.0
+Both tags are annotated tags and are published as GitHub Releases:
 
-A second Git tag, `v2.0`, is present in the repository refs. The repository documentation
-does not provide evidence that `v2.0` is published as a formal GitHub Release, so its status
-as a completed, baselined release is not confirmed from the available repository artifacts.
-Version 2 work is partially delivered (order status lifecycle, transition validation, role
-seeding, idempotent checkout, persistent cart), but the Admin Order Management dashboard is
-still outstanding and should be verified before treating the tag as a completed release.
+- https://github.com/minhsuanwu-project/EComLite_Project/releases/tag/v1.0
+- https://github.com/minhsuanwu-project/EComLite_Project/releases/tag/v2.0
+
+Version 2 is complete. Every item in its scope is implemented and merged, and the tag points
+at the merge commit for the final Version 2 pull request (PR #6, `c214408`):
+
+| Version 2 item | Repository evidence |
+|---|---|
+| Order status lifecycle (Pending → Processing → Shipped → Delivered) | `EComLite.Web/Models/OrderStatus.cs` |
+| Server-side transition validation | `EComLite.Web/Services/OrderStatusService.cs`; `EComLite.Tests/OrderStatusTransitionTests.cs` |
+| Admin Order Management dashboard | `EComLite.Web/Pages/Admin/Orders.cshtml`, `Orders.cshtml.cs` |
+| Role-restricted admin routes | `[Authorize(Roles = "Admin")]` on the admin page model; `EComLite.Web/Data/IdentitySeeder.cs` |
+| Customer-visible order status | Status badges in `EComLite.Web/Pages/Orders/Index.cshtml` |
+| Idempotent checkout | `EComLite.Web/Services/CheckoutService.cs`; `Order.IdempotencyKey` unique index |
+| Database-backed persistent cart | `EComLite.Web/Services/PersistentCartService.cs`; `PersistedCart` table |
 
 ---
 
@@ -171,8 +195,8 @@ Continuous integration protects the baseline from regressions.
 - **Workflow:** `.github/workflows/ci.yml`
 - **Triggers:** every `push` and every `pull_request`
 - **Steps:** checkout, set up .NET 8, `dotnet restore`, `dotnet test`
-- **Current status:** 46 automated tests, 0 failures
-  (evidence: `docs/test-evidence/2026-07-30-dotnet-test.md`)
+- **Current status:** 55 automated tests, 0 failures at `v2.0`
+  (evidence: `docs/test-evidence/2026-08-02-dotnet-test.md`)
 
 ### 6.1 CM finding and corrective action
 
@@ -203,7 +227,7 @@ verification, and risk records evolve with the software:
 | Product Requirements Document | `docs/Product_Requirements_Document.md` |
 | Software Test Plan and Report | `docs/Software_Test_Plan_and_Report.md` |
 | Risk Management Report | `docs/CISC594_Risk_Management_Report_Draft_EComLite.xlsx` |
-| Test execution evidence | `docs/test-evidence/2026-07-30-dotnet-test.md` |
+| Test execution evidence | `docs/test-evidence/` (latest: `2026-08-02-dotnet-test.md`, 55 passed at v2.0) |
 | CM exercise write-up | `docs/cm-exercise.md` |
 | Generation prompts | `docs/prompts/` |
 
@@ -218,10 +242,10 @@ any past version can be recovered.
 |---|---|---|
 | Version control system | Git / GitHub, instructor has access | Public repository |
 | Development off the master branch | 4 feature/docs branches | Branch list, Section 3 |
-| Formal change control | Pull request required for every change | PRs #1–#4 |
+| Formal change control | Pull request required for every change | PRs #1–#6 |
 | Merge to baseline after testing | Merged only after local tests and CI pass | Merge commits, Section 4.2 |
 | Release tagging | `v1.0` tagged and released at completion of Version 1 | Tag `v1.0` at `61cd86a` |
-| Automated verification | GitHub Actions on push and pull request | `ci.yml`, 46 tests passing |
+| Automated verification | GitHub Actions on push and pull request | `ci.yml`, 55 tests passing |
 | Configuration defect handling | R6 found, corrected, and tracked | Risk Register, commit `0b1c290` |
 
 All new development was performed on branches, verified, reviewed through a pull request,
